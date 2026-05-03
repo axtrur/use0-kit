@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 
+import { execFile } from "node:child_process";
 import { realpathSync } from "node:fs";
 import { cp, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import process from "node:process";
 import { createInterface } from "node:readline/promises";
+import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 
 import { adoptExisting, previewAdoptExisting } from "./core/adopt.js";
@@ -138,6 +140,7 @@ export type CliExitCode = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 
 const KNOWN_AGENT_IDS: AgentId[] = ["claude-code", "cursor", "codex", "opencode"];
 const KNOWN_SCOPE_NAMES: ScopeName[] = ["global", "user", "workspace", "project", "session"];
+const execFileAsync = promisify(execFile);
 
 function isFlagToken(value: string | undefined): value is string {
   return typeof value === "string" && /^--[A-Za-z0-9][A-Za-z0-9-]*$/.test(value);
@@ -177,12 +180,7 @@ export function successExitCodeForCli(args: string[], output: string): CliExitCo
   const subcommand = args[1];
 
   if (command === "plan") {
-    try {
-      const parsed = JSON.parse(output);
-      return Array.isArray(parsed) && parsed.length > 0 ? 3 : 0;
-    } catch {
-      return output.trim().length > 0 && output.trim() !== "No changes" ? 3 : 0;
-    }
+    return 0;
   }
 
   if (command === "diff") {
@@ -257,6 +255,11 @@ export function errorExitCodeForCli(error: unknown): Exclude<CliExitCode, 0> {
     return 2;
   }
   return 1;
+}
+
+function formatExecutedCommandOutput(stdout?: string | Buffer, stderr?: string | Buffer): string {
+  const combined = `${stdout ?? ""}${stderr ?? ""}`.trim();
+  return combined.length > 0 ? combined : "ok";
 }
 
 function parseFlags(args: string[]): { positionals: string[]; flags: Record<string, string> } {
@@ -403,8 +406,8 @@ async function applyInitTemplate(root: string, templateName: string, agents: Age
   throw new Error(`Unknown template: ${templateName}`);
 }
 
-function normalizeInstructionId(heading: string): string {
-  return heading
+function normalizeInstructionId(title: string): string {
+  return title
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
@@ -417,9 +420,10 @@ async function resolveInstructionSelector(root: string, selector: string): Promi
   if (byId) {
     return byId.id;
   }
-  const byHeading = manifest.instructions.find((instruction) => instruction.heading === selector);
-  if (byHeading) {
-    return byHeading.id;
+  const normalized = normalizeInstructionId(selector);
+  const byNormalizedId = manifest.instructions.find((instruction) => instruction.id === normalized);
+  if (byNormalizedId) {
+    return byNormalizedId.id;
   }
   return selector;
 }
@@ -1255,9 +1259,9 @@ export async function runCli(args: string[], context: CliContext): Promise<strin
       const id = flags.id ?? positionals[1];
       await addInstruction(root, {
         id,
-        placement: (flags.placement as "section" | undefined) ?? "section",
-        heading: flags.heading,
-        body: flags.body ?? positionals[2],
+        title: flags.title,
+        body: flags.body ?? flags.content ?? positionals[2],
+        source: flags.source,
         targets: parseTargets(flags.targets)
       }, forceOption(flags));
       return `Added instruction:${id}`;
@@ -1439,6 +1443,10 @@ export async function runCli(args: string[], context: CliContext): Promise<strin
     }
     if (kind === "command") {
       const resource = await getCommand(root, id);
+      return await resolveSourcePath(root, resource.source);
+    }
+    if (kind === "instruction") {
+      const resource = await getInstruction(root, id);
       return await resolveSourcePath(root, resource.source);
     }
     if (kind === "subagent") {
@@ -1628,13 +1636,13 @@ export async function runCli(args: string[], context: CliContext): Promise<strin
 
   if (command === "instruction" && subcommand === "set-section") {
     const root = await resolveCommandRoot(context, flags.scope as string | undefined);
-    const heading = flags.heading ?? positionals[0];
-    const id = flags.id ?? (heading ? normalizeInstructionId(heading) : undefined);
+    const title = flags.title ?? positionals[0];
+    const id = flags.id ?? (title ? normalizeInstructionId(title) : undefined);
     await addInstruction(root, {
       id,
-      placement: (flags.placement as "section" | undefined) ?? "section",
-      heading,
-      body: flags.body ?? positionals[1],
+      title,
+      body: flags.body ?? flags.content ?? positionals[1],
+      source: flags.source,
       targets: parseTargets(flags.targets)
     }, forceOption(flags));
     return `Added instruction:${id}`;
@@ -1642,13 +1650,13 @@ export async function runCli(args: string[], context: CliContext): Promise<strin
 
   if (command === "instruction" && subcommand === "init") {
     const root = await resolveCommandRoot(context, flags.scope as string | undefined);
-    const heading = flags.heading ?? positionals[0];
-    const id = flags.id ?? (heading ? normalizeInstructionId(heading) : undefined);
+    const title = flags.title ?? positionals[0];
+    const id = flags.id ?? (title ? normalizeInstructionId(title) : undefined);
     await addInstruction(root, {
       id,
-      placement: (flags.placement as "section" | undefined) ?? "section",
-      heading,
-      body: flags.body ?? positionals[1],
+      title,
+      body: flags.body ?? flags.content ?? positionals[1],
+      source: flags.source,
       targets: parseTargets(flags.targets)
     }, forceOption(flags));
     return `Added instruction:${id}`;
@@ -1670,7 +1678,7 @@ export async function runCli(args: string[], context: CliContext): Promise<strin
     const root = await resolveCommandRoot(context, flags.scope as string | undefined);
     try {
       const instruction = await getInstruction(root, await resolveInstructionSelector(root, positionals[0]));
-      return `${instruction.heading}\n${instruction.body}`;
+      return await loadResourceContent(root, instruction.source);
     } catch (error) {
       return error instanceof Error ? error.message : String(error);
     }
@@ -1782,7 +1790,18 @@ export async function runCli(args: string[], context: CliContext): Promise<strin
   if (command === "hook" && subcommand === "test") {
     const root = await resolveCommandRoot(context, flags.scope as string | undefined);
     const hook = await getHook(root, positionals[0]);
-    return loadResourceContent(root, hook.source);
+    const hookPath = await resolveSourcePath(root, hook.source);
+    try {
+      const { stdout, stderr } = await execFileAsync("/bin/sh", [hookPath], { cwd: root });
+      return formatExecutedCommandOutput(stdout, stderr);
+    } catch (error) {
+      if (typeof error === "object" && error !== null && ("stdout" in error || "stderr" in error)) {
+        const failure = error as { stdout?: string | Buffer; stderr?: string | Buffer; message?: string };
+        const output = `${failure.stdout ?? ""}${failure.stderr ?? ""}`.trim();
+        throw new Error(output || failure.message || "Hook failed");
+      }
+      throw error;
+    }
   }
 
   if (command === "secret" && subcommand === "add") {

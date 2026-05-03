@@ -287,6 +287,12 @@ function collectSources(manifest: Manifest): Array<{
       source: item.source,
       provenance: item.provenance
     })),
+    ...manifest.instructions.map((item) => ({
+      kind: "instruction",
+      id: item.id,
+      source: item.source,
+      provenance: item.provenance
+    })),
     ...manifest.subagents.map((item) => ({
       kind: "subagent",
       id: item.id,

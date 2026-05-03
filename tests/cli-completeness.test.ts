@@ -771,9 +771,12 @@ describe("CLI completeness helpers", () => {
       { cwd: root }
     );
     await runCli(
-      ["instruction", "set-section", "--heading", "Testing", "--body", "Run tests.", "--targets", "codex,cursor", "--id", "testing"],
+      ["instruction", "set-section", "Testing", "--body", "Run tests.", "--targets", "codex,cursor", "--id", "testing"],
       { cwd: root }
     );
+    const manifest = await readFile(join(root, "use0-kit.toml"), "utf8");
+    expect(manifest).not.toContain("placement =");
+    expect(manifest).not.toContain("heading =");
 
     const codexPlan = JSON.parse(await runCli(["plan", "--agent", "codex", "--json"], { cwd: root })) as Array<{
       agentId?: string;
@@ -936,5 +939,29 @@ describe("CLI completeness helpers", () => {
     const output = await runCli(["rollback"], { cwd: root });
     expect(output).toContain("Rolled back");
     expect(await readFile(join(root, "use0-kit.toml"), "utf8")).toBe(beforeApply);
+  });
+
+  test("rollback restores managed instruction source resources", async () => {
+    const root = await mkdtemp(join(tmpdir(), "use0-kit-rollback-instructions-"));
+    const instructionPath = join(root, ".use0-kit", "resources", "instructions", "testing.md");
+
+    await runCli(["scope", "init", "--scope", "project", "--agents", "codex"], { cwd: root });
+    await runCli(
+      ["instruction", "set-section", "Testing", "--body", "Initial instruction", "--targets", "codex"],
+      { cwd: root }
+    );
+    await runCli(["apply", "--agent", "codex", "--verify"], { cwd: root });
+    const backupId = (await runCli(["backup", "create"], { cwd: root })).split(": ").at(-1)?.trim() ?? "";
+
+    await runCli(
+      ["instruction", "set-section", "Testing", "--body", "Rollback marker", "--targets", "codex", "--force"],
+      { cwd: root }
+    );
+    await runCli(["apply", "--agent", "codex", "--verify"], { cwd: root });
+
+    expect(await readFile(instructionPath, "utf8")).toContain("Rollback marker");
+    expect(await runCli(["rollback", backupId], { cwd: root })).toContain("Rolled back");
+    expect(await readFile(instructionPath, "utf8")).toContain("Initial instruction");
+    expect(await runCli(["lock", "verify"], { cwd: root })).toContain("lock ok");
   });
 });

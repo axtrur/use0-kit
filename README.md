@@ -19,7 +19,7 @@ Supported agent targets:
 
 - `skill`: directory-based agent skills, usually with `SKILL.md`.
 - `mcp`: MCP server definitions, including `stdio`, `http`, and `npm:` convenience inputs.
-- `instruction`: managed sections rendered into agent instruction files.
+- `instruction`: markdown source files rendered into agent instruction files.
 - `command`: reusable markdown command files.
 - `subagent`: reusable subagent definitions.
 - `hook`: shell hook resources.

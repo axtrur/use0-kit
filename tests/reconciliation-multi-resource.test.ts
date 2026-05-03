@@ -19,7 +19,7 @@ describe("multi-resource reconciliation", () => {
       { cwd: globalRoot }
     );
     await runCli(
-      ["instruction", "init", "--id", "testing", "--heading", "Testing", "--body", "Run npm test.", "--targets", "codex"],
+      ["instruction", "init", "Testing", "--id", "testing", "--body", "Run npm test.", "--targets", "codex"],
       { cwd: globalRoot }
     );
     await runCli(
@@ -32,7 +32,7 @@ describe("multi-resource reconciliation", () => {
     );
 
     await runCli(
-      ["instruction", "init", "--id", "testing", "--heading", "Testing", "--body", "Project override.", "--targets", "codex"],
+      ["instruction", "init", "Testing", "--id", "testing", "--body", "Project override.", "--targets", "codex"],
       { cwd: projectRoot }
     );
     await runCli(
@@ -66,7 +66,7 @@ describe("multi-resource reconciliation", () => {
     await runCli(["scope", "init", "--scope", "project"], { cwd: mirrorRoot });
 
     await runCli(
-      ["instruction", "init", "--id", "testing", "--heading", "Testing", "--body", "Run npm test.", "--targets", "codex"],
+      ["instruction", "init", "Testing", "--id", "testing", "--body", "Run npm test.", "--targets", "codex"],
       { cwd: globalRoot }
     );
     await runCli(

@@ -29,7 +29,6 @@ export type RegistryItem = {
   command?: string;
   args?: string[];
   transport?: string;
-  heading?: string;
   body?: string;
   registry?: string;
   publishedAt?: string;
@@ -209,9 +208,6 @@ function toRegistryItem(selector: string, resource: SelectorResource, registryNa
   }
   if ("transport" in resource && typeof resource.transport === "string") {
     base.transport = resource.transport;
-  }
-  if ("heading" in resource && typeof resource.heading === "string") {
-    base.heading = resource.heading;
   }
   if ("body" in resource && typeof resource.body === "string") {
     base.body = resource.body;
@@ -459,6 +455,13 @@ async function crawlRegistryItem(
 }
 
 export async function addRegistry(root: string, name: string, source: string): Promise<void> {
+  if (!isRemoteRegistrySource(source)) {
+    try {
+      await access(source);
+    } catch {
+      await saveRegistryPayload(source, { items: [] });
+    }
+  }
   const config = await loadRegistryConfig(root);
   config.registries = config.registries.filter((item) => item.name !== name);
   config.registries.push({ name, source });
@@ -697,11 +700,17 @@ export async function installFromRegistry(
       provenance: item.provenance
     });
   } else if (item.kind === "instruction") {
+    let source = item.source ?? "";
+    if (!source && item.body !== undefined) {
+      const instructionPath = join(root, ".use0-kit", "resources", "instructions", `${item.id}.md`);
+      await mkdir(dirname(instructionPath), { recursive: true });
+      await writeFile(instructionPath, item.body, "utf8");
+      source = `path:${instructionPath}`;
+    }
     manifest.instructions = manifest.instructions.filter((entry) => entry.id !== item.id);
     manifest.instructions.push({
       id: item.id,
-      heading: item.heading ?? item.name,
-      body: item.body ?? "",
+      source,
       targets: (item.targets ?? []) as typeof manifest.instructions[number]["targets"],
       provenance: item.provenance
     });

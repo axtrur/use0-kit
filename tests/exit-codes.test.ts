@@ -8,9 +8,9 @@ import { errorExitCodeForCli, runCli, successExitCodeForCli } from "../src/cli.j
 describe("cli exit codes", () => {
   test("maps successful diff, plan, lock, and doctor outputs to documented exit codes", () => {
     expect(successExitCodeForCli(["plan"], "[]")).toBe(0);
-    expect(successExitCodeForCli(["plan"], '[{"kind":"link-skill"}]')).toBe(3);
+    expect(successExitCodeForCli(["plan"], '[{"kind":"link-skill"}]')).toBe(0);
     expect(successExitCodeForCli(["plan"], "No changes")).toBe(0);
-    expect(successExitCodeForCli(["plan"], "STORE  skill skill:repo-conventions -> .use0-kit/store/skills/repo-conventions")).toBe(3);
+    expect(successExitCodeForCli(["plan"], "STORE  skill skill:repo-conventions -> .use0-kit/store/skills/repo-conventions")).toBe(0);
     expect(successExitCodeForCli(["diff", "--effective"], "effective: pending")).toBe(3);
     expect(successExitCodeForCli(["lock", "verify"], "lock mismatch")).toBe(8);
     expect(successExitCodeForCli(["doctor"], "policy: error")).toBe(5);

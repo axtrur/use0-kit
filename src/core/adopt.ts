@@ -1,4 +1,5 @@
-import { lstat, readdir, readFile, realpath } from "node:fs/promises";
+import { lstat, mkdir, readdir, readFile, realpath, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 
 import { AGENTS } from "./agents.js";
 import { loadManifest, saveManifest } from "./manifest.js";
@@ -306,16 +307,18 @@ export async function adoptExisting(
 
     if (kinds.includes("instruction")) {
       for (const instruction of await listInstructionCandidates(root, agent).catch(() => [])) {
+        const instructionId = instruction.selector.slice("instruction:".length);
+        const managedPath = join(root, ".use0-kit", "resources", "instructions", `${instructionId}.md`);
+        await mkdir(join(root, ".use0-kit", "resources", "instructions"), { recursive: true });
+        await writeFile(managedPath, await readFile(instruction.source, "utf8"), "utf8");
         manifest.instructions = manifest.instructions.filter(
-          (item) => item.id !== instruction.selector.slice("instruction:".length)
+          (item) => item.id !== instructionId
         );
         manifest.instructions.push(
           withExternalProvenance(
             {
-              id: instruction.selector.slice("instruction:".length),
-              heading: `${agent} guidance`,
-              body: await readFile(instruction.source, "utf8"),
-              placement: "section",
+              id: instructionId,
+              source: `path:${managedPath}`,
               targets: instruction.targets
             },
             action,

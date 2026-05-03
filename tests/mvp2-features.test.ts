@@ -236,7 +236,8 @@ describe("MVP2 features", () => {
     expect(manifest).toContain(`source = "path:${resolvedSkillDir}"`);
     expect(manifest).toContain('id = "context7"');
     expect(manifest).toContain('id = "claude-code-guidance"');
-    expect(manifest).toContain('heading = "claude-code guidance"');
+    expect(manifest).toContain(".use0-kit/resources/instructions/claude-code-guidance.md");
+    expect(manifest).not.toContain("heading =");
   });
 
   test("supports adopt action modes ignore and leave-external", async () => {

@@ -160,7 +160,7 @@ export function summarizeSelectorResource(selector: string, resource: SelectorRe
   }
   if (kind === "instruction") {
     const value = resource as InstructionResource;
-    return `${value.placement ?? "section"} ${value.heading} ${value.body}`;
+    return `${value.source}${value.syncMode ? ` ${value.syncMode}` : ""}${originSuffix}`;
   }
   if (kind === "command") {
     const value = resource as CommandResource;
@@ -218,7 +218,7 @@ export function describeSelectorResource(selector: string, resource: SelectorRes
   }
   if (kind === "instruction") {
     const value = resource as InstructionResource;
-    return `${selector}\nplacement=${value.placement ?? "section"}\nheading=${value.heading}\ntargets=${value.targets.join(",")}${originLines.length ? `\n${originLines.join("\n")}` : ""}${provenanceLines.length ? `\n${provenanceLines.join("\n")}` : ""}`;
+    return `${selector}\nsource=${value.source}\ntargets=${value.targets.join(",")}${originLines.length ? `\n${originLines.join("\n")}` : ""}${provenanceLines.length ? `\n${provenanceLines.join("\n")}` : ""}`;
   }
   if (kind === "command") {
     const value = resource as CommandResource;

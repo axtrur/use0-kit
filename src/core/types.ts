@@ -49,9 +49,7 @@ export interface SkillResource {
 
 export interface InstructionResource {
   id: string;
-  placement?: "section";
-  heading: string;
-  body: string;
+  source: string;
   targets: ResourceTarget[];
   provenance?: Provenance;
   originScope?: string;

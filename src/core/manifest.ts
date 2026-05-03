@@ -140,9 +140,7 @@ export function parseManifest(input: string): Manifest {
     if (currentInstruction) {
       manifest.instructions.push({
         id: currentInstruction.id ?? "",
-        placement: (currentInstruction.placement as InstructionResource["placement"] | undefined) ?? "section",
-        heading: currentInstruction.heading ?? "",
-        body: currentInstruction.body ?? "",
+        source: currentInstruction.source ?? "",
         targets: (currentInstruction.targets ?? []) as ResourceTarget[],
         provenance: currentInstruction.provenance,
         originScope: currentInstruction.originScope,
@@ -627,11 +625,7 @@ export function parseManifest(input: string): Manifest {
 
     if (currentInstruction) {
       if (key === "id") currentInstruction.id = parseString(value);
-      if (key === "placement") {
-        currentInstruction.placement = parseString(value) as InstructionResource["placement"];
-      }
-      if (key === "heading") currentInstruction.heading = parseString(value);
-      if (key === "body") currentInstruction.body = parseString(value);
+      if (key === "source") currentInstruction.source = parseString(value);
       if (key === "targets") {
         currentInstruction.targets = parseStringArray(value) as ResourceTarget[];
       }
@@ -754,9 +748,7 @@ export function serializeManifest(manifest: Manifest): string {
   for (const instruction of manifest.instructions) {
     lines.push("", "[[instructions]]");
     lines.push(`id = "${instruction.id}"`);
-    lines.push(`placement = "${instruction.placement ?? "section"}"`);
-    lines.push(`heading = "${instruction.heading}"`);
-    lines.push(`body = "${instruction.body}"`);
+    lines.push(`source = "${instruction.source}"`);
     lines.push(
       `targets = [${instruction.targets.map((target) => `"${target}"`).join(", ")}]`
     );

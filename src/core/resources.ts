@@ -75,20 +75,40 @@ export async function removeMcpServer(root: string, mcpId: string): Promise<void
 
 export async function addInstruction(
   root: string,
-  instruction: InstructionResource,
+  input: Omit<InstructionResource, "source"> & { body?: string; source?: string; title?: string },
   options?: MutationOptions
 ): Promise<void> {
   const manifest = await loadManifest(root);
   assertCanReplaceResource(
     manifest,
     "instruction",
-    instruction.id,
-    manifest.instructions.some((item) => item.id === instruction.id),
+    input.id,
+    manifest.instructions.some((item) => item.id === input.id),
     options
   );
-  manifest.instructions = manifest.instructions.filter((item) => item.id !== instruction.id);
-  manifest.instructions.push(instruction);
+  const source =
+    input.source ??
+    (await writeManagedResource(root, "instructions", input.id, formatInstructionBody(input.body ?? "", input.title)));
+  manifest.instructions = manifest.instructions.filter((item) => item.id !== input.id);
+  manifest.instructions.push({
+    id: input.id,
+    source: input.source ? input.source : `path:${source}`,
+    targets: input.targets,
+    provenance: input.provenance,
+    originScope: input.originScope,
+    originProfile: input.originProfile,
+    syncMode: input.syncMode,
+    pinnedDigest: input.pinnedDigest
+  });
   await saveManifest(root, manifest);
+}
+
+function formatInstructionBody(body: string, title?: string): string {
+  const normalizedTitle = title?.trim();
+  if (!normalizedTitle || body.trimStart().startsWith("#")) {
+    return body;
+  }
+  return `## ${normalizedTitle}\n\n${body}`;
 }
 
 export async function getInstruction(root: string, id: string): Promise<InstructionResource> {
@@ -112,7 +132,12 @@ export async function addExclude(root: string, selector: string): Promise<void> 
   await saveManifest(root, manifest);
 }
 
-async function writeManagedResource(root: string, kind: "commands" | "subagents", id: string, content: string) {
+async function writeManagedResource(
+  root: string,
+  kind: "commands" | "subagents" | "instructions",
+  id: string,
+  content: string
+) {
   const dir = join(root, ".use0-kit", "resources", kind);
   await mkdir(dir, { recursive: true });
   const path = join(dir, `${id}.md`);

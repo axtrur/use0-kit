@@ -1,9 +1,10 @@
 import { createHash } from "node:crypto";
-import { cp, mkdir } from "node:fs/promises";
+import { cp, mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { loadManifest, saveManifest } from "./manifest.js";
 import { expandSelectors, findBySelector, listSelectors } from "./resource-graph.js";
+import { loadResourceContent } from "./resources.js";
 import type {
   CommandResource,
   HookResource,
@@ -60,9 +61,7 @@ function comparableResource(selector: string, resource: unknown): unknown {
     const value = resource as InstructionResource;
     return {
       id: value.id,
-      placement: value.placement ?? "section",
-      heading: value.heading,
-      body: value.body,
+      source: value.source,
       targets: value.targets
     };
   }
@@ -276,8 +275,7 @@ export async function syncScopesDetailed(input: {
     const existing = target.instructions.find((item) => item.id === instruction.id);
     const hasConflict =
       !!existing &&
-      (existing.heading !== instruction.heading ||
-        existing.body !== instruction.body ||
+      (existing.source !== instruction.source ||
         JSON.stringify(existing.targets) !== JSON.stringify(instruction.targets));
     const resolvedConflict = hasConflict ? await resolveConflict(`instruction:${instruction.id}`) : conflict;
     if (hasConflict && resolvedConflict === "fail") {
@@ -288,7 +286,6 @@ export async function syncScopesDetailed(input: {
     }
     const next: InstructionResource = {
       ...instruction,
-      placement: instruction.placement ?? "section",
       originScope,
       originProfile,
       syncMode: mode
@@ -296,13 +293,28 @@ export async function syncScopesDetailed(input: {
     if (mode === "pin") {
       next.pinnedDigest = digestResource({
         id: instruction.id,
-        heading: instruction.heading,
-        body: instruction.body,
+        source: instruction.source,
         targets: instruction.targets
       });
     }
+    if (mode === "fork") {
+      const forkDir = join(input.toRoot, ".agents", "instructions");
+      await mkdir(forkDir, { recursive: true });
+      const forkPath = join(forkDir, `${instruction.id}.md`);
+      await cp(instruction.source.replace(/^path:/, ""), forkPath);
+      next.source = `path:${forkPath}`;
+    }
     if (hasConflict && resolvedConflict === "merge" && existing) {
-      next.body = `${existing.body}\n${instruction.body}`;
+      const mergedPath = join(input.toRoot, ".use0-kit", "resources", "instructions", `${instruction.id}.md`);
+      const mergedContent = [
+        (await loadResourceContent(input.toRoot, existing.source)).trimEnd(),
+        (await loadResourceContent(input.fromRoot, instruction.source)).trim()
+      ]
+        .filter(Boolean)
+        .join("\n");
+      await mkdir(join(input.toRoot, ".use0-kit", "resources", "instructions"), { recursive: true });
+      await writeFile(mergedPath, `${mergedContent}\n`, "utf8");
+      next.source = `path:${mergedPath}`;
     }
     target.instructions = target.instructions.filter((item) => item.id !== instruction.id);
     target.instructions.push(next);

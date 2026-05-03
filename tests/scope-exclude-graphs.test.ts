@@ -62,11 +62,11 @@ describe("scope exclude and graph views", () => {
       { cwd: projectRoot }
     );
     await runCli(
-      ["instruction", "init", "--id", "testing", "--heading", "Testing", "--body", "global body", "--targets", "codex"],
+      ["instruction", "init", "Testing", "--id", "testing", "--body", "global body", "--targets", "codex"],
       { cwd: globalRoot }
     );
     await runCli(
-      ["instruction", "init", "--id", "testing", "--heading", "Testing", "--body", "project body", "--targets", "codex"],
+      ["instruction", "init", "Testing", "--id", "testing", "--body", "project body", "--targets", "codex"],
       { cwd: projectRoot }
     );
 
@@ -81,8 +81,15 @@ describe("scope exclude and graph views", () => {
       { cwd: root }
     );
     const merged = await readFile(join(projectRoot, "use0-kit.toml"), "utf8");
-    expect(merged).toContain("project body");
-    expect(merged).toContain("global body");
+    expect(merged).toContain(
+      `source = "path:${join(projectRoot, ".use0-kit", "resources", "instructions", "testing.md")}"`
+    );
+    expect(
+      await readFile(join(projectRoot, ".use0-kit", "resources", "instructions", "testing.md"), "utf8")
+    ).toContain("project body");
+    expect(
+      await readFile(join(projectRoot, ".use0-kit", "resources", "instructions", "testing.md"), "utf8")
+    ).toContain("global body");
 
     expect(await runCli(["diff", "--effective"], { cwd: projectRoot })).toContain("effective");
     await runCli(["apply"], { cwd: projectRoot });

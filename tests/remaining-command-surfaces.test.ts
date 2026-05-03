@@ -11,6 +11,8 @@ describe("remaining command surfaces", () => {
     const fromRoot = join(root, "from");
     const toRoot = join(root, "to");
     const registryPath = join(root, "registry.json");
+    const hookFromMarker = join(fromRoot, "hook-ran.txt");
+    const hookToMarker = join(toRoot, "hook-ran.txt");
 
     await runCli(["scope", "init", "--scope", "project"], { cwd: fromRoot });
     await runCli(["scope", "init", "--scope", "project"], { cwd: toRoot });
@@ -35,7 +37,16 @@ describe("remaining command surfaces", () => {
       { cwd: fromRoot }
     );
     await runCli(
-      ["hook", "add", "--id", "pre-apply", "--content", "echo before", "--targets", "codex"],
+      [
+        "hook",
+        "add",
+        "--id",
+        "pre-apply",
+        "--content",
+        "printf 'hook-ran' > \"$PWD/hook-ran.txt\"\nprintf 'executed\\n'",
+        "--targets",
+        "codex"
+      ],
       { cwd: fromRoot }
     );
     await runCli(
@@ -56,14 +67,11 @@ describe("remaining command surfaces", () => {
     await runCli(["mcp", "enable", "context7"], { cwd: fromRoot });
     expect(await runCli(["instruction", "read", "Testing"], { cwd: fromRoot })).toContain("Run npm test");
     await runCli(["instruction", "link", "--agent", "codex"], { cwd: fromRoot });
-    expect(await runCli(["hook", "test", "pre-apply"], { cwd: fromRoot })).toContain("echo before");
+    expect(await runCli(["hook", "test", "pre-apply"], { cwd: fromRoot })).toContain("executed");
+    expect(await readFile(hookFromMarker, "utf8")).toBe("hook-ran");
 
-    await writeFile(
-      registryPath,
-      JSON.stringify({ items: [{ kind: "skill", id: "web-design", name: "Web Design" }] }, null, 2),
-      "utf8"
-    );
     await runCli(["registry", "add", "official", registryPath], { cwd: fromRoot });
+    expect(JSON.parse(await readFile(registryPath, "utf8"))).toEqual({ items: [] });
     expect(await runCli(["registry", "list"], { cwd: fromRoot })).toContain("official");
     await runCli(["registry", "remove", "official"], { cwd: fromRoot });
     expect(await runCli(["registry", "list"], { cwd: fromRoot })).not.toContain("official");
@@ -73,7 +81,8 @@ describe("remaining command surfaces", () => {
     expect(await runCli(["list", "--kind", "secret"], { cwd: toRoot })).toContain("secret:openai");
     expect(await runCli(["list", "--kind", "pack"], { cwd: toRoot })).toContain("pack:frontend");
     expect(await runCli(["list", "--kind", "profile"], { cwd: toRoot })).toContain("profile:frontend");
-    expect(await runCli(["hook", "test", "pre-apply"], { cwd: toRoot })).toContain("echo before");
+    expect(await runCli(["hook", "test", "pre-apply"], { cwd: toRoot })).toContain("executed");
+    expect(await readFile(hookToMarker, "utf8")).toBe("hook-ran");
 
     await runCli(["instruction", "remove-section", "Testing"], { cwd: fromRoot });
     expect(await runCli(["instruction", "read", "Testing"], { cwd: fromRoot })).toContain("Unknown");

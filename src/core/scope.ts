@@ -64,12 +64,14 @@ export async function initScope(options: InitScopeOptions): Promise<void> {
   await mkdir(scopeRoot, { recursive: true });
   if (options.scope === "project" || options.scope === "workspace" || options.scope === "session") {
     await mkdir(join(scopeRoot, ".agents", "skills"), { recursive: true });
+    await mkdir(join(scopeRoot, ".agents", "instructions"), { recursive: true });
     await mkdir(join(scopeRoot, ".agents", "commands"), { recursive: true });
     await mkdir(join(scopeRoot, ".agents", "subagents"), { recursive: true });
     await mkdir(join(scopeRoot, ".agents", "hooks"), { recursive: true });
     await mkdir(join(scopeRoot, ".agents", "plugins"), { recursive: true });
   }
   await mkdir(join(scopeRoot, ".use0-kit", "store", "skills"), { recursive: true });
+  await mkdir(join(scopeRoot, ".use0-kit", "resources", "instructions"), { recursive: true });
   await mkdir(join(scopeRoot, ".use0-kit", "resources", "commands"), { recursive: true });
   await mkdir(join(scopeRoot, ".use0-kit", "resources", "subagents"), { recursive: true });
   await mkdir(join(scopeRoot, ".use0-kit", "resources", "hooks"), { recursive: true });

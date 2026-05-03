@@ -175,9 +175,13 @@ export async function collectEffectiveGraph(root: string): Promise<EffectiveGrap
     };
   }
   for (const instruction of manifest.instructions) {
+    const metadata = resolveSourceMetadata(instruction.source, instruction.provenance);
     resources[`instruction:${instruction.id}`] = {
       kind: "instruction",
-      digest: await digestWithOptionalSource(instruction),
+      digest: await digestWithOptionalSource(instruction, instruction.source),
+      source: instruction.source,
+      resolvedUrl: metadata.resolvedUrl,
+      resolvedRef: metadata.resolvedRef,
       originScope: instruction.originScope,
       originProfile: instruction.originProfile,
       scopeMode: instruction.syncMode,

@@ -94,6 +94,7 @@ export async function runDoctorForSelector(root: string, selector?: string): Pro
 
     const localSourceSelectors = [
       ...manifest.skills.map((item) => ({ id: `skill:${item.id}`, source: item.source })),
+      ...manifest.instructions.map((item) => ({ id: `instruction:${item.id}`, source: item.source })),
       ...manifest.commands.map((item) => ({ id: `command:${item.id}`, source: item.source })),
       ...manifest.subagents.map((item) => ({ id: `subagent:${item.id}`, source: item.source })),
       ...manifest.hooks.map((item) => ({ id: `hook:${item.id}`, source: item.source })),

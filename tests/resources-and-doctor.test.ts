@@ -42,7 +42,7 @@ describe("resource mutations and doctor", () => {
     });
     await addInstruction(root, {
       id: "testing",
-      heading: "Testing",
+      title: "Testing",
       body: "Run npm test before opening a PR.",
       targets: ["codex"]
     });
@@ -60,7 +60,7 @@ describe("resource mutations and doctor", () => {
     expect(manifest.instructions).toEqual([
       expect.objectContaining({
         id: "testing",
-        heading: "Testing"
+        source: expect.stringContaining(".use0-kit/resources/instructions/testing.md")
       })
     ]);
   });
@@ -151,7 +151,7 @@ describe("resource mutations and doctor", () => {
     });
     await addInstruction(root, {
       id: "bad-target",
-      heading: "Bad Target",
+      title: "Bad Target",
       body: "Unsupported target test",
       targets: ["codex", "ghost-agent" as never]
     });
@@ -230,7 +230,7 @@ describe("resource mutations and doctor", () => {
     await initScope({ cwd: root, scope: "project" });
     await addInstruction(root, {
       id: "testing",
-      heading: "Testing",
+      title: "Testing",
       body: "Run npm test before opening a PR.",
       targets: ["codex"]
     });
@@ -313,7 +313,7 @@ describe("resource mutations and doctor", () => {
     });
     await addInstruction(root, {
       id: "shared-guidance",
-      heading: "Shared Guidance",
+      title: "Shared Guidance",
       body: "Applies everywhere.",
       targets: ["universal"]
     });

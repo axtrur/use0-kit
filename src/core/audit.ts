@@ -26,6 +26,7 @@ export async function auditResourcesFiltered(
   const findings: Array<{ id: string; severity: Severity; rule: string; detail: string }> = [];
   const remoteResources = [
     ...manifest.skills.map((item) => ({ id: `skill:${item.id}`, source: item.source })),
+    ...manifest.instructions.map((item) => ({ id: `instruction:${item.id}`, source: item.source })),
     ...manifest.commands.map((item) => ({ id: `command:${item.id}`, source: item.source })),
     ...manifest.subagents.map((item) => ({ id: `subagent:${item.id}`, source: item.source })),
     ...manifest.hooks.map((item) => ({ id: `hook:${item.id}`, source: item.source }))
@@ -66,7 +67,7 @@ export async function auditResourcesFiltered(
   }
 
   for (const instruction of manifest.instructions) {
-    findings.push(...scanContent(`instruction:${instruction.id}`, instruction.body));
+    findings.push(...scanContent(`instruction:${instruction.id}`, await loadResourceContent(root, instruction.source)));
   }
 
   for (const mcp of manifest.mcps) {

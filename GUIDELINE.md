@@ -68,8 +68,8 @@ use0-kit mcp add context7 --command npx --args "-y,@upstash/context7-mcp" --targ
 use0-kit instruction set-section Testing --body "Run npm test before PRs." --targets codex,claude-code
 ```
 
-功能：登记一个托管 instruction section。  
-可能变化：只更新 `use0-kit.toml`；`AGENTS.md` / `CLAUDE.md` 要等 `apply` 写入。
+功能：登记一个托管 instruction markdown 片段。  
+可能变化：更新 `use0-kit.toml`，并把完整 markdown 内容保存到 `.use0-kit/resources/instructions/`；`AGENTS.md` / `CLAUDE.md` 要等 `apply` 写入。
 
 ```bash
 use0-kit command add repo-check --content "Run npm test and npm run build." --targets codex
@@ -136,7 +136,7 @@ use0-kit plan --agent codex,claude-code
 ```
 
 功能：预览会写入哪些 store 和 agent-native 目标。  
-可能变化：只读预览，不写文件；当前实现可能用非零退出码表示存在 pending changes。
+可能变化：只读预览，不写文件；即使存在 pending changes，成功退出码也是 `0`。
 
 ```bash
 use0-kit apply --agent codex,claude-code --verify
@@ -202,7 +202,7 @@ use0-kit mcp render --agent claude-code
 use0-kit instruction render --agent codex
 ```
 
-功能：预览会写入 `AGENTS.md` 的托管 instruction section。  
+功能：预览会写入 `AGENTS.md` 的托管 instruction markdown 片段。  
 可能变化：只打印内容，不写文件。
 
 ```bash
@@ -216,8 +216,8 @@ use0-kit command render repo-check --agent codex
 use0-kit hook test pre-apply
 ```
 
-功能：当前实现会打印 hook 内容。  
-可能变化：只读展示；它目前不是实际执行 hook，后续更适合拆成 `hook render` 和真正的 `hook test`。
+功能：真实执行 hook 脚本并返回执行输出。  
+可能变化：真实执行 hook 脚本；可能产生 stdout/stderr，也可能产生脚本自身的副作用。
 
 ```bash
 use0-kit secret env openai
@@ -263,7 +263,7 @@ use0-kit registry add local "$PWD/registry.json"
 ```
 
 功能：把本地 JSON 文件注册为名为 `local` 的 registry。  
-可能变化：更新 `.use0-kit/registries.json`。
+可能变化：如果目标 JSON 不存在会先创建一个空 registry 文件，然后更新 `.use0-kit/registries.json`。
 
 ```bash
 use0-kit registry login local
@@ -315,7 +315,7 @@ use0-kit registry add local "/path/to/source/project/registry.json"
 ```
 
 功能：让临时项目复用源项目的本地 registry。  
-可能变化：更新临时项目的 `.use0-kit/registries.json`。
+可能变化：如果目标 JSON 不存在会先创建一个空 registry 文件，然后更新临时项目的 `.use0-kit/registries.json`。
 
 ```bash
 use0-kit install skill:codex-project-setup
@@ -367,4 +367,3 @@ use0-kit doctor
 
 功能：确认 rollback 后状态健康。  
 可能变化：只读检查，不写文件。
-

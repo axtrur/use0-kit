@@ -1,4 +1,5 @@
 import { AGENTS } from "./agents.js";
+import { loadResourceContent } from "./resources.js";
 import { targetMatches } from "./targets.js";
 import type { AgentId, InstructionResource } from "./types.js";
 
@@ -18,15 +19,14 @@ export async function renderInstructions(input: {
   const relevant = input.instructions.filter((instruction) =>
     targetMatches(instruction.targets, input.agentId)
   );
-  const sections = relevant.map(
-    (instruction) =>
+  const sections = await Promise.all(
+    relevant.map(async (instruction) =>
       [
         instructionMarkerStart(instruction.id),
-        `## ${instruction.heading}`,
-        "",
-        instruction.body,
+        (await loadResourceContent(input.root, instruction.source)).trimEnd(),
         instructionMarkerEnd(instruction.id)
       ].join("\n").trim()
+    )
   );
 
   return {

@@ -15,7 +15,7 @@ describe("generic add remove", () => {
       { cwd: root }
     );
     await runCli(
-      ["add", "instruction", "testing", "--body", "Run pnpm test before PRs.", "--heading", "Testing", "--targets", "codex"],
+      ["add", "instruction", "testing", "--body", "Run pnpm test before PRs.", "--title", "Testing", "--targets", "codex"],
       { cwd: root }
     );
     await runCli(
