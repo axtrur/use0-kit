@@ -1,0 +1,451 @@
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+
+import { loadManifest, saveManifest } from "./manifest.js";
+import { resolveSourcePath } from "./source-resolver.js";
+import { loadState, saveState } from "./state.js";
+import type {
+  CommandResource,
+  HookResource,
+  InstructionResource,
+  McpResource,
+  PackResource,
+  PluginResource,
+  ProfileResource,
+  ResourceTarget,
+  SecretResource,
+  SkillResource,
+  SubagentResource
+} from "./types.js";
+
+type MutationOptions = {
+  force?: boolean;
+};
+
+function scopeLabel(manifest: { scope?: { level?: string }; defaultScope?: string }): string {
+  return `${manifest.scope?.level ?? manifest.defaultScope ?? "project"} scope`;
+}
+
+function assertCanReplaceResource(
+  manifest: { scope?: { level?: string }; defaultScope?: string },
+  kind: string,
+  id: string,
+  existing: boolean,
+  options?: MutationOptions
+): void {
+  if (existing && !options?.force) {
+    throw new Error(`${kind}:${id} already exists in ${scopeLabel(manifest)}. Use --force to replace it.`);
+  }
+}
+
+export async function addSkill(root: string, skill: SkillResource, options?: MutationOptions): Promise<void> {
+  const manifest = await loadManifest(root);
+  assertCanReplaceResource(manifest, "skill", skill.id, manifest.skills.some((item) => item.id === skill.id), options);
+  manifest.skills = manifest.skills.filter((item) => item.id !== skill.id);
+  manifest.skills.push(skill);
+  await saveManifest(root, manifest);
+}
+
+export async function removeSkill(root: string, skillId: string): Promise<void> {
+  const manifest = await loadManifest(root);
+  manifest.skills = manifest.skills.filter((item) => item.id !== skillId);
+  await saveManifest(root, manifest);
+}
+
+export async function getSkill(root: string, id: string): Promise<SkillResource> {
+  const manifest = await loadManifest(root);
+  const skill = manifest.skills.find((item) => item.id === id);
+  if (!skill) throw new Error(`Unknown skill:${id}`);
+  return skill;
+}
+
+export async function addMcpServer(root: string, mcp: McpResource, options?: MutationOptions): Promise<void> {
+  const manifest = await loadManifest(root);
+  assertCanReplaceResource(manifest, "mcp", mcp.id, manifest.mcps.some((item) => item.id === mcp.id), options);
+  manifest.mcps = manifest.mcps.filter((item) => item.id !== mcp.id);
+  manifest.mcps.push(mcp);
+  await saveManifest(root, manifest);
+}
+
+export async function removeMcpServer(root: string, mcpId: string): Promise<void> {
+  const manifest = await loadManifest(root);
+  manifest.mcps = manifest.mcps.filter((item) => item.id !== mcpId);
+  await saveManifest(root, manifest);
+}
+
+export async function addInstruction(
+  root: string,
+  instruction: InstructionResource,
+  options?: MutationOptions
+): Promise<void> {
+  const manifest = await loadManifest(root);
+  assertCanReplaceResource(
+    manifest,
+    "instruction",
+    instruction.id,
+    manifest.instructions.some((item) => item.id === instruction.id),
+    options
+  );
+  manifest.instructions = manifest.instructions.filter((item) => item.id !== instruction.id);
+  manifest.instructions.push(instruction);
+  await saveManifest(root, manifest);
+}
+
+export async function getInstruction(root: string, id: string): Promise<InstructionResource> {
+  const manifest = await loadManifest(root);
+  const instruction = manifest.instructions.find((item) => item.id === id);
+  if (!instruction) throw new Error(`Unknown instruction:${id}`);
+  return instruction;
+}
+
+export async function removeInstruction(root: string, id: string): Promise<void> {
+  const manifest = await loadManifest(root);
+  manifest.instructions = manifest.instructions.filter((item) => item.id !== id);
+  await saveManifest(root, manifest);
+}
+
+export async function addExclude(root: string, selector: string): Promise<void> {
+  const manifest = await loadManifest(root);
+  if (!manifest.excludes.some((item) => item.selector === selector)) {
+    manifest.excludes.push({ selector });
+  }
+  await saveManifest(root, manifest);
+}
+
+async function writeManagedResource(root: string, kind: "commands" | "subagents", id: string, content: string) {
+  const dir = join(root, ".use0-kit", "resources", kind);
+  await mkdir(dir, { recursive: true });
+  const path = join(dir, `${id}.md`);
+  await writeFile(path, content, "utf8");
+  return path;
+}
+
+async function writeManagedHook(root: string, id: string, content: string) {
+  const dir = join(root, ".use0-kit", "resources", "hooks");
+  await mkdir(dir, { recursive: true });
+  const path = join(dir, `${id}.sh`);
+  await writeFile(path, content, "utf8");
+  return path;
+}
+
+export async function addCommand(
+  root: string,
+  input: { id: string; content?: string; source?: string; targets: CommandResource["targets"] },
+  options?: MutationOptions
+): Promise<void> {
+  const manifest = await loadManifest(root);
+  assertCanReplaceResource(manifest, "command", input.id, manifest.commands.some((item) => item.id === input.id), options);
+  const source = input.source ?? (await writeManagedResource(root, "commands", input.id, input.content ?? ""));
+  manifest.commands = manifest.commands.filter((item) => item.id !== input.id);
+  manifest.commands.push({ id: input.id, source: `path:${source}`, targets: input.targets });
+  if (input.source) {
+    manifest.commands[manifest.commands.length - 1].source = input.source;
+  }
+  await saveManifest(root, manifest);
+}
+
+export async function addSubagent(
+  root: string,
+  input: { id: string; content?: string; source?: string; targets: SubagentResource["targets"] },
+  options?: MutationOptions
+): Promise<void> {
+  const manifest = await loadManifest(root);
+  assertCanReplaceResource(manifest, "subagent", input.id, manifest.subagents.some((item) => item.id === input.id), options);
+  const source = input.source ?? (await writeManagedResource(root, "subagents", input.id, input.content ?? ""));
+  manifest.subagents = manifest.subagents.filter((item) => item.id !== input.id);
+  manifest.subagents.push({ id: input.id, source: `path:${source}`, targets: input.targets });
+  if (input.source) {
+    manifest.subagents[manifest.subagents.length - 1].source = input.source;
+  }
+  await saveManifest(root, manifest);
+}
+
+export async function getCommand(root: string, id: string): Promise<CommandResource> {
+  const manifest = await loadManifest(root);
+  const command = manifest.commands.find((item) => item.id === id);
+  if (!command) throw new Error(`Unknown command:${id}`);
+  return command;
+}
+
+export async function getSubagent(root: string, id: string): Promise<SubagentResource> {
+  const manifest = await loadManifest(root);
+  const subagent = manifest.subagents.find((item) => item.id === id);
+  if (!subagent) throw new Error(`Unknown subagent:${id}`);
+  return subagent;
+}
+
+export async function addHook(
+  root: string,
+  input: { id: string; content?: string; source?: string; targets: HookResource["targets"] },
+  options?: MutationOptions
+): Promise<void> {
+  const manifest = await loadManifest(root);
+  assertCanReplaceResource(manifest, "hook", input.id, manifest.hooks.some((item) => item.id === input.id), options);
+  const source = input.source ?? (await writeManagedHook(root, input.id, input.content ?? ""));
+  manifest.hooks = manifest.hooks.filter((item) => item.id !== input.id);
+  manifest.hooks.push({ id: input.id, source: `path:${source}`, targets: input.targets });
+  if (input.source) {
+    manifest.hooks[manifest.hooks.length - 1].source = input.source;
+  }
+  await saveManifest(root, manifest);
+}
+
+export async function getHook(root: string, id: string): Promise<HookResource> {
+  const manifest = await loadManifest(root);
+  const hook = manifest.hooks.find((item) => item.id === id);
+  if (!hook) throw new Error(`Unknown hook:${id}`);
+  return hook;
+}
+
+export async function removeHook(root: string, id: string): Promise<void> {
+  const manifest = await loadManifest(root);
+  manifest.hooks = manifest.hooks.filter((item) => item.id !== id);
+  await saveManifest(root, manifest);
+}
+
+export async function removeCommand(root: string, id: string): Promise<void> {
+  const manifest = await loadManifest(root);
+  manifest.commands = manifest.commands.filter((item) => item.id !== id);
+  await saveManifest(root, manifest);
+}
+
+export async function removeSubagent(root: string, id: string): Promise<void> {
+  const manifest = await loadManifest(root);
+  manifest.subagents = manifest.subagents.filter((item) => item.id !== id);
+  await saveManifest(root, manifest);
+}
+
+export async function getMcp(root: string, id: string): Promise<McpResource> {
+  const manifest = await loadManifest(root);
+  const mcp = manifest.mcps.find((item) => item.id === id);
+  if (!mcp) throw new Error(`Unknown mcp:${id}`);
+  return mcp;
+}
+
+export async function setMcpEnabled(root: string, id: string, enabled: boolean): Promise<void> {
+  const manifest = await loadManifest(root);
+  const mcp = manifest.mcps.find((item) => item.id === id);
+  if (!mcp) throw new Error(`Unknown mcp:${id}`);
+  mcp.enabled = enabled;
+  await saveManifest(root, manifest);
+}
+
+export async function addSecret(root: string, secret: SecretResource, options?: MutationOptions): Promise<void> {
+  const manifest = await loadManifest(root);
+  assertCanReplaceResource(manifest, "secret", secret.id, manifest.secrets.some((item) => item.id === secret.id), options);
+  manifest.secrets = manifest.secrets.filter((item) => item.id !== secret.id);
+  manifest.secrets.push(secret);
+  await saveManifest(root, manifest);
+}
+
+export async function addPlugin(root: string, plugin: PluginResource, options?: MutationOptions): Promise<void> {
+  const manifest = await loadManifest(root);
+  assertCanReplaceResource(manifest, "plugin", plugin.id, manifest.plugins.some((item) => item.id === plugin.id), options);
+  manifest.plugins = manifest.plugins.filter((item) => item.id !== plugin.id);
+  manifest.plugins.push(plugin);
+  await saveManifest(root, manifest);
+}
+
+export async function getPlugin(root: string, id: string): Promise<PluginResource> {
+  const manifest = await loadManifest(root);
+  const plugin = manifest.plugins.find((item) => item.id === id);
+  if (!plugin) throw new Error(`Unknown plugin:${id}`);
+  return plugin;
+}
+
+export async function removePlugin(root: string, id: string): Promise<void> {
+  const manifest = await loadManifest(root);
+  manifest.plugins = manifest.plugins.filter((item) => item.id !== id);
+  await saveManifest(root, manifest);
+}
+
+export async function initPlugin(
+  root: string,
+  input: { id: string; source: string; targets: PluginResource["targets"] },
+  options?: MutationOptions
+): Promise<void> {
+  await addPlugin(root, {
+    id: input.id,
+    source: input.source,
+    targets: input.targets
+  }, options);
+}
+
+export async function getSecret(root: string, id: string): Promise<SecretResource> {
+  const manifest = await loadManifest(root);
+  const secret = manifest.secrets.find((item) => item.id === id);
+  if (!secret) throw new Error(`Unknown secret:${id}`);
+  return secret;
+}
+
+export async function removeSecret(root: string, id: string): Promise<void> {
+  const manifest = await loadManifest(root);
+  manifest.secrets = manifest.secrets.filter((item) => item.id !== id);
+  await saveManifest(root, manifest);
+}
+
+export async function loadResourceContent(root: string, source: string): Promise<string> {
+  return readFile(await resolveSourcePath(root, source), "utf8");
+}
+
+export async function initPack(
+  root: string,
+  input: { id: string; name: string; version: string },
+  options?: MutationOptions
+): Promise<void> {
+  const manifest = await loadManifest(root);
+  assertCanReplaceResource(manifest, "pack", input.id, manifest.packs.some((item) => item.id === input.id), options);
+  manifest.packs = manifest.packs.filter((item) => item.id !== input.id);
+  manifest.packs.push({ ...input, resources: [] });
+  await saveManifest(root, manifest);
+}
+
+export async function addPackResource(root: string, packId: string, selector: string): Promise<void> {
+  const manifest = await loadManifest(root);
+  const pack = manifest.packs.find((item) => item.id === packId);
+  if (!pack) throw new Error(`Unknown pack:${packId}`);
+  if (!pack.resources.includes(selector)) {
+    pack.resources.push(selector);
+  }
+  await saveManifest(root, manifest);
+}
+
+export async function getPack(root: string, packId: string): Promise<PackResource> {
+  const manifest = await loadManifest(root);
+  const pack = manifest.packs.find((item) => item.id === packId);
+  if (!pack) throw new Error(`Unknown pack:${packId}`);
+  return pack;
+}
+
+export async function listPacks(root: string): Promise<PackResource[]> {
+  return (await loadManifest(root)).packs;
+}
+
+export async function removePack(root: string, packId: string): Promise<void> {
+  const manifest = await loadManifest(root);
+  manifest.packs = manifest.packs.filter((item) => item.id !== packId);
+  await saveManifest(root, manifest);
+}
+
+export async function createProfile(
+  root: string,
+  input: { id: string; name: string; defaultTargets?: ResourceTarget[] },
+  options?: MutationOptions
+): Promise<void> {
+  const manifest = await loadManifest(root);
+  assertCanReplaceResource(manifest, "profile", input.id, manifest.profiles.some((item) => item.id === input.id), options);
+  manifest.profiles = manifest.profiles.filter((item) => item.id !== input.id);
+  manifest.profiles.push({ ...input, exports: [] });
+  await saveManifest(root, manifest);
+}
+
+export async function addProfileExport(root: string, profileId: string, selector: string): Promise<void> {
+  const manifest = await loadManifest(root);
+  const profile = manifest.profiles.find((item) => item.id === profileId);
+  if (!profile) throw new Error(`Unknown profile:${profileId}`);
+  if (!profile.exports.includes(selector)) {
+    profile.exports.push(selector);
+  }
+  await saveManifest(root, manifest);
+}
+
+export async function getProfile(root: string, profileId: string): Promise<ProfileResource> {
+  const manifest = await loadManifest(root);
+  const profile = manifest.profiles.find((item) => item.id === profileId);
+  if (!profile) throw new Error(`Unknown profile:${profileId}`);
+  return profile;
+}
+
+export async function listProfiles(root: string): Promise<ProfileResource[]> {
+  return (await loadManifest(root)).profiles;
+}
+
+export async function removeProfile(root: string, profileId: string): Promise<void> {
+  const manifest = await loadManifest(root);
+  manifest.profiles = manifest.profiles.filter((item) => item.id !== profileId);
+  await saveManifest(root, manifest);
+}
+
+export async function exportProfile(root: string, profileId: string, outPath: string): Promise<void> {
+  const profile = await getProfile(root, profileId);
+  if (outPath.endsWith(".toml")) {
+    const lines = [
+      "[profile]",
+      `id = "${profile.id}"`,
+      `name = "${profile.name}"`,
+      `exports = [${profile.exports.map((item) => `"${item}"`).join(", ")}]`
+    ];
+    if (profile.defaultTargets?.length) {
+      lines.push(`default_targets = [${profile.defaultTargets.map((item) => `"${item}"`).join(", ")}]`);
+    }
+    await writeFile(outPath, lines.join("\n") + "\n", "utf8");
+    return;
+  }
+  await writeFile(outPath, JSON.stringify(profile, null, 2) + "\n", "utf8");
+}
+
+export async function importProfile(root: string, sourcePath: string): Promise<void> {
+  const raw = await readFile(sourcePath, "utf8");
+  const imported = sourcePath.endsWith(".toml") ? parseProfileToml(raw) : (JSON.parse(raw) as ProfileResource);
+  const manifest = await loadManifest(root);
+  manifest.profiles = manifest.profiles.filter((item) => item.id !== imported.id);
+  manifest.profiles.push(imported);
+  await saveManifest(root, manifest);
+}
+
+export async function useProfile(root: string, profileId: string): Promise<void> {
+  const state = await loadState(root);
+  state.activeProfile = profileId;
+  await saveState(root, state);
+}
+
+function parseProfileToml(content: string): ProfileResource {
+  let inProfile = false;
+  const parsed: Partial<ProfileResource> = { exports: [] };
+
+  for (const rawLine of content.split("\n")) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) {
+      continue;
+    }
+    if (line === "[profile]") {
+      inProfile = true;
+      continue;
+    }
+    if (!inProfile) {
+      continue;
+    }
+    const separator = line.indexOf("=");
+    if (separator === -1) {
+      continue;
+    }
+    const key = line.slice(0, separator).trim();
+    const value = line.slice(separator + 1).trim();
+    if (key === "id") parsed.id = parseTomlString(value);
+    if (key === "name") parsed.name = parseTomlString(value);
+    if (key === "exports") parsed.exports = parseTomlStringArray(value);
+    if (key === "default_targets") parsed.defaultTargets = parseTomlStringArray(value) as ResourceTarget[];
+  }
+
+  return {
+    id: parsed.id ?? "",
+    name: parsed.name ?? "",
+    exports: parsed.exports ?? [],
+    defaultTargets: parsed.defaultTargets
+  };
+}
+
+function parseTomlString(value: string): string {
+  return value.replace(/^"/, "").replace(/"$/, "");
+}
+
+function parseTomlStringArray(value: string): string[] {
+  const inner = value.trim().replace(/^\[/, "").replace(/\]$/, "").trim();
+  if (!inner) {
+    return [];
+  }
+  return inner
+    .split(",")
+    .map((item) => parseTomlString(item.trim()))
+    .filter(Boolean);
+}

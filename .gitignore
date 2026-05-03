@@ -1,0 +1,16 @@
+node_modules/
+dist/
+
+# Local use0-kit materialization/demo state
+.agents/
+.claude/
+.codex/
+.cursor/
+.opencode/
+.use0-kit/
+AGENTS.md
+CLAUDE.md
+OPENCODE.md
+registry.json
+use0-kit.lock.json
+use0-kit.toml

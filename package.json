@@ -1,0 +1,19 @@
+{
+  "name": "use0-kit",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "use0-kit": "./dist/src/cli.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.30",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}
