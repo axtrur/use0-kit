@@ -24,7 +24,7 @@ describe("state lock and graph", () => {
     await runCli(["hook", "add", "--id", "pre-apply", "--content", "echo before", "--targets", "codex"], {
       cwd: root
     });
-    await runCli(["secret", "add", "--id", "openai", "--env", "OPENAI_API_KEY", "--targets", "codex"], {
+    await runCli(["secret", "add", "--id", "openai", "--env", "OPENAI_API_KEY", "--targets", "claude-code"], {
       cwd: root
     });
     await runCli(["pack", "init", "frontend", "--name", "acme/frontend", "--version", "1.0.0"], {
@@ -44,7 +44,7 @@ describe("state lock and graph", () => {
     expect(materialized).toContain("hook:pre-apply");
     expect(materialized).toContain(".codex/hooks/pre-apply.sh");
     expect(materialized).toContain("secret:openai");
-    expect(materialized).toContain(".codex/secrets/openai.json");
+    expect(materialized).toContain(".claude/secrets/openai.json");
     expect(materialized).toContain("pack:frontend");
     expect(materialized).toContain(".use0-kit/store/packs/frontend.json");
     expect(materialized).toContain("plugin:repo-helper");
@@ -100,7 +100,7 @@ describe("state lock and graph", () => {
     expect(await runCli(["diff", "--materialized"], { cwd: root })).toContain("materialized: clean");
 
     await runCli(
-      ["command", "add", "--id", "security-scan", "--content", "echo hi", "--targets", "codex"],
+      ["command", "add", "--id", "security-scan", "--content", "echo hi", "--targets", "claude-code"],
       { cwd: root }
     );
 

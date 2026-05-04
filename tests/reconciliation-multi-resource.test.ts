@@ -23,7 +23,7 @@ describe("multi-resource reconciliation", () => {
       { cwd: globalRoot }
     );
     await runCli(
-      ["command", "add", "--id", "security-scan", "--content", "echo hi", "--targets", "codex"],
+      ["command", "add", "--id", "security-scan", "--content", "echo hi", "--targets", "claude-code"],
       { cwd: globalRoot }
     );
     await runCli(
@@ -36,7 +36,7 @@ describe("multi-resource reconciliation", () => {
       { cwd: projectRoot }
     );
     await runCli(
-      ["command", "add", "--id", "security-scan", "--content", "echo overridden", "--targets", "codex"],
+      ["command", "add", "--id", "security-scan", "--content", "echo overridden", "--targets", "claude-code"],
       { cwd: projectRoot }
     );
 
@@ -70,7 +70,7 @@ describe("multi-resource reconciliation", () => {
       { cwd: globalRoot }
     );
     await runCli(
-      ["command", "add", "--id", "security-scan", "--content", "echo hi", "--targets", "codex"],
+      ["command", "add", "--id", "security-scan", "--content", "echo hi", "--targets", "claude-code"],
       { cwd: globalRoot }
     );
     await runCli(

@@ -1,4 +1,4 @@
-import { mkdtemp } from "node:fs/promises";
+import { mkdtemp, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
@@ -19,11 +19,11 @@ describe("generic add remove", () => {
       { cwd: root }
     );
     await runCli(
-      ["add", "command", "security-scan", "inline:echo%20hi", "--targets", "codex"],
+      ["add", "command", "security-scan", "inline:echo%20hi", "--targets", "claude-code"],
       { cwd: root }
     );
     await runCli(
-      ["add", "subagent", "backend", "inline:Own%20backend%20changes.", "--targets", "codex"],
+      ["add", "subagent", "backend", "inline:Own%20backend%20changes.", "--targets", "claude-code"],
       { cwd: root }
     );
     await runCli(
@@ -77,5 +77,32 @@ describe("generic add remove", () => {
     expect(after).not.toContain("hook:pre-apply");
     expect(after).not.toContain("pack:frontend");
     expect(after).not.toContain("plugin:repo-helper");
+  });
+
+  test("scaffolds managed command and subagent content with metadata frontmatter", async () => {
+    const root = await mkdtemp(join(tmpdir(), "use0-kit-resource-content-scaffold-"));
+
+    await runCli(["scope", "init", "--scope", "project"], { cwd: root });
+    await runCli(["command", "add", "repo-check", "--content", "npm test", "--targets", "claude-code"], { cwd: root });
+    await runCli(
+      ["subagent", "add", "reviewer", "--content", "Review code for regressions.", "--targets", "claude-code"],
+      { cwd: root }
+    );
+
+    const commandContent = await readFile(
+      join(root, ".use0-kit", "sources", "commands", "repo-check.md"),
+      "utf8"
+    );
+    const subagentContent = await readFile(
+      join(root, ".use0-kit", "sources", "subagents", "reviewer.md"),
+      "utf8"
+    );
+
+    expect(commandContent).toContain("name: repo-check");
+    expect(commandContent).toContain("description:");
+    expect(commandContent).toContain("npm test");
+    expect(subagentContent).toContain("name: reviewer");
+    expect(subagentContent).toContain("description:");
+    expect(subagentContent).toContain("Review code for regressions.");
   });
 });

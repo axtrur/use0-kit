@@ -31,3 +31,7 @@ Run all executable guideline specs:
 ```bash
 npm test -- tests/guidelines/guidelines.test.ts
 ```
+
+## Agent Capability Notes
+
+`codex` (codex-cli >=0.128) does not honor user-defined slash commands, subagents, or on-disk secrets — those resource kinds must target a different agent (e.g. `claude-code`, `cursor`, or `opencode`). The guides reflect this: kinds supported by codex (`skill`, `instruction`, `mcp`, `hook`, `plugin`) target it directly; everything else is routed to a supporting agent. See `src/core/agent-profiles.ts` for the full per-agent capability matrix.

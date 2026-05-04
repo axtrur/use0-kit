@@ -50,7 +50,7 @@ describe("remaining command surfaces", () => {
       { cwd: fromRoot }
     );
     await runCli(
-      ["secret", "add", "--id", "openai", "--env", "OPENAI_API_KEY", "--targets", "codex"],
+      ["secret", "add", "--id", "openai", "--env", "OPENAI_API_KEY", "--targets", "claude-code"],
       { cwd: fromRoot }
     );
     await runCli(["pack", "init", "frontend", "--name", "acme/frontend", "--version", "1.0.0"], {

@@ -1,6 +1,7 @@
 import { access, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import { AGENT_PROFILES, listAgentIds, type ResourceKind } from "./agent-profiles.js";
 import { AGENTS } from "./agents.js";
 import type { AgentId } from "./types.js";
 
@@ -17,48 +18,24 @@ export function getAgentPaths(root: string): Record<
     instructionPath: string;
   }
 > {
-  return {
-    "claude-code": {
-      markerPath: AGENTS["claude-code"].markerPath(root),
-      skillDir: AGENTS["claude-code"].skillDir(root),
-      commandDir: AGENTS["claude-code"].commandDir(root),
-      subagentDir: AGENTS["claude-code"].subagentDir(root),
-      hookDir: AGENTS["claude-code"].hookDir(root),
-      secretDir: AGENTS["claude-code"].secretDir(root),
-      mcpConfigPath: AGENTS["claude-code"].mcpConfigPath(root),
-      instructionPath: AGENTS["claude-code"].instructionPath(root)
-    },
-    cursor: {
-      markerPath: AGENTS.cursor.markerPath(root),
-      skillDir: AGENTS.cursor.skillDir(root),
-      commandDir: AGENTS.cursor.commandDir(root),
-      subagentDir: AGENTS.cursor.subagentDir(root),
-      hookDir: AGENTS.cursor.hookDir(root),
-      secretDir: AGENTS.cursor.secretDir(root),
-      mcpConfigPath: AGENTS.cursor.mcpConfigPath(root),
-      instructionPath: AGENTS.cursor.instructionPath(root)
-    },
-    codex: {
-      markerPath: AGENTS.codex.markerPath(root),
-      skillDir: AGENTS.codex.skillDir(root),
-      commandDir: AGENTS.codex.commandDir(root),
-      subagentDir: AGENTS.codex.subagentDir(root),
-      hookDir: AGENTS.codex.hookDir(root),
-      secretDir: AGENTS.codex.secretDir(root),
-      mcpConfigPath: AGENTS.codex.mcpConfigPath(root),
-      instructionPath: AGENTS.codex.instructionPath(root)
-    },
-    opencode: {
-      markerPath: AGENTS.opencode.markerPath(root),
-      skillDir: AGENTS.opencode.skillDir(root),
-      commandDir: AGENTS.opencode.commandDir(root),
-      subagentDir: AGENTS.opencode.subagentDir(root),
-      hookDir: AGENTS.opencode.hookDir(root),
-      secretDir: AGENTS.opencode.secretDir(root),
-      mcpConfigPath: AGENTS.opencode.mcpConfigPath(root),
-      instructionPath: AGENTS.opencode.instructionPath(root)
-    }
-  };
+  return Object.fromEntries(
+    listAgentIds().map((agentId) => {
+      const def = AGENTS[agentId];
+      return [
+        agentId,
+        {
+          markerPath: def.markerPath(root),
+          skillDir: def.skillDir(root),
+          commandDir: def.commandDir(root),
+          subagentDir: def.subagentDir(root),
+          hookDir: def.hookDir(root),
+          secretDir: def.secretDir(root),
+          mcpConfigPath: def.mcpConfigPath(root),
+          instructionPath: def.instructionPath(root)
+        }
+      ];
+    })
+  ) as Record<AgentId, ReturnType<typeof getAgentPaths>[AgentId]>;
 }
 
 export async function detectAgents(root: string): Promise<
@@ -92,16 +69,31 @@ export async function detectAgents(root: string): Promise<
 }
 
 export function listAgents(): AgentId[] {
-  return Object.keys(AGENTS) as AgentId[];
+  return listAgentIds();
 }
 
-export function getAgentCapabilities(): Record<AgentId, string[]> {
-  return {
-    "claude-code": ["skills", "instructions", "mcp"],
-    cursor: ["skills", "instructions", "mcp"],
-    codex: ["skills", "instructions", "mcp"],
-    opencode: ["skills", "instructions", "mcp"]
-  };
+const ALL_KINDS: ResourceKind[] = [
+  "skill",
+  "command",
+  "subagent",
+  "instruction",
+  "mcp",
+  "hook",
+  "secret",
+  "plugin"
+];
+
+/**
+ * Real per-agent capability snapshot derived from {@link AGENT_PROFILES}.
+ * Returned as the list of resource kinds each agent actually supports.
+ */
+export function getAgentCapabilities(): Record<AgentId, ResourceKind[]> {
+  return Object.fromEntries(
+    listAgentIds().map((agentId) => [
+      agentId,
+      ALL_KINDS.filter((kind) => AGENT_PROFILES[agentId].kinds[kind].supported)
+    ])
+  ) as Record<AgentId, ResourceKind[]>;
 }
 
 export async function setAgentDisabled(root: string, agentId: AgentId, disabled: boolean): Promise<void> {

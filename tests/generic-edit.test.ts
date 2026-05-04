@@ -18,7 +18,7 @@ describe("generic edit", () => {
       { cwd: root }
     );
     await runCli(
-      ["command", "add", "--id", "security-scan", "--content", "echo hi", "--targets", "codex"],
+      ["command", "add", "--id", "security-scan", "--content", "echo hi", "--targets", "claude-code"],
       { cwd: root }
     );
 

@@ -115,7 +115,7 @@ describe("additional CLI surfaces", () => {
     expect(listedJson).toEqual(
       expect.arrayContaining([expect.objectContaining({ id: "codex", detected: true, path: join(root, ".codex", "config.toml") })])
     );
-    expect(await runCli(["agent", "capabilities"], { cwd: root })).toContain("skills");
+    expect(await runCli(["agent", "capabilities"], { cwd: root })).toContain("skill");
     const codexCapabilities = await runCli(["agent", "capabilities", "--agent", "codex"], { cwd: root });
     expect(codexCapabilities).toContain("codex");
     expect(codexCapabilities).not.toContain("cursor");
@@ -192,14 +192,14 @@ describe("additional CLI surfaces", () => {
 
       await mkdir(globalSkill, { recursive: true });
       await writeFile(join(globalSkill, "SKILL.md"), "# Global Skill\n", "utf8");
-      await runCli(["add", "skill", `path:${globalSkill}`, "--id", "global-skill", "--targets", "codex"], {
+      await runCli(["add", "skill", `path:${globalSkill}`, "--id", "global-skill", "--targets", "claude-code"], {
         cwd: globalRoot
       });
       await runCli(
         ["add", "mcp", "--id", "context7", "--command", "npx", "--args", "-y,@upstash/context7-mcp", "--targets", "codex"],
         { cwd: userRoot }
       );
-      await runCli(["add", "secret", "--id", "openai", "--env", "OPENAI_API_KEY", "--targets", "codex"], {
+      await runCli(["add", "secret", "--id", "openai", "--env", "OPENAI_API_KEY", "--targets", "claude-code"], {
         cwd: userRoot
       });
       await runCli(["add", "command", "inline:echo%20workspace", "--id", "workspace-cmd", "--targets", "cursor"], {
@@ -216,10 +216,10 @@ describe("additional CLI surfaces", () => {
       expect(effective).toContain("command:workspace-cmd");
       expect(effective).not.toContain("mcp:context7");
 
-      const codexOnly = await runCli(["list", "--effective", "--agent", "codex"], { cwd: projectRoot });
-      expect(codexOnly).toContain("skill:global-skill");
-      expect(codexOnly).toContain("secret:openai");
-      expect(codexOnly).not.toContain("command:workspace-cmd");
+      const claudeOnly = await runCli(["list", "--effective", "--agent", "claude-code"], { cwd: projectRoot });
+      expect(claudeOnly).toContain("skill:global-skill");
+      expect(claudeOnly).toContain("secret:openai");
+      expect(claudeOnly).not.toContain("command:workspace-cmd");
     } finally {
       if (previousConfig === undefined) delete process.env.XDG_CONFIG_HOME;
       else process.env.XDG_CONFIG_HOME = previousConfig;

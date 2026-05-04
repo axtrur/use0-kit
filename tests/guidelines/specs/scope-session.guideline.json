@@ -48,7 +48,7 @@
     {
       "id": "session-init",
       "cwd": "${project}",
-      "run": ["scope", "init", "--scope", "session", "--agents", "codex"],
+      "run": ["scope", "init", "--scope", "session", "--agents", "codex,claude-code"],
       "assert": {
         "stdoutContains": ["Initialized session scope"],
         "filesExist": [".use0-kit/session/use0-kit.toml"],
@@ -76,7 +76,7 @@
     {
       "id": "session-command",
       "cwd": "${project}",
-      "run": ["command", "add", "session-check", "--content", "echo session-only", "--targets", "codex", "--scope", "session"],
+      "run": ["command", "add", "session-check", "--content", "echo session-only", "--targets", "claude-code", "--scope", "session"],
       "assert": {
         "filesExist": [".use0-kit/session/.use0-kit/sources/commands/session-check.md"]
       }
@@ -101,9 +101,9 @@
     {
       "id": "session-apply",
       "cwd": "${project}",
-      "run": ["apply", "--scope", "session", "--agent", "codex", "--verify"],
+      "run": ["apply", "--scope", "session", "--agent", "codex,claude-code", "--verify"],
       "assert": {
-        "filesExist": [".use0-kit/session/AGENTS.md", ".use0-kit/session/.codex/commands/session-check.md"],
+        "filesExist": [".use0-kit/session/AGENTS.md", ".use0-kit/session/.claude/commands/session-check.md"],
         "fileContains": {
           ".use0-kit/session/AGENTS.md": ["Session-only testing marker."],
           "AGENTS.md": ["Project baseline testing."]
@@ -132,10 +132,10 @@
     {
       "id": "promote-session-command",
       "cwd": "${project}",
-      "run": ["scope", "sync", "--from", "session", "--to", "project", "command:session-check", "--mode", "fork", "--apply", "--agent", "codex"],
+      "run": ["scope", "sync", "--from", "session", "--to", "project", "command:session-check", "--mode", "fork", "--apply", "--agent", "codex,claude-code"],
       "assert": {
         "stdoutContains": ["Synced 1 resource"],
-        "filesExist": [".codex/commands/session-check.md"]
+        "filesExist": [".claude/commands/session-check.md"]
       }
     },
     {

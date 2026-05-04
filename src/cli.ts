@@ -97,6 +97,7 @@ import {
   removeSubagent,
   setMcpEnabled
 } from "./core/resources.js";
+import { ensureMetadataFrontmatter } from "./core/resource-content.js";
 import {
   diffScopes,
   explainResource,
@@ -1482,7 +1483,10 @@ export async function runCli(args: string[], context: CliContext): Promise<strin
     await mkdir(skillDir, { recursive: true });
     await writeFile(
       join(skillDir, "SKILL.md"),
-      ["---", `id: ${id}`, `name: ${id}`, "---", "", `Describe the ${id} skill here.`].join("\n"),
+      ensureMetadataFrontmatter(`# ${id}\n\n## Instructions\n\nDescribe the ${id} skill here.`, {
+        name: id,
+        description: `Use the ${id} skill.`
+      }),
       "utf8"
     );
     await addSkill(root, {

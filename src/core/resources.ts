@@ -1,7 +1,9 @@
 import { access, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { isAbsolute, join, resolve } from "node:path";
 
+import { assertKindSupported } from "./agent-profiles.js";
 import { loadManifest, saveManifest } from "./manifest.js";
+import { ensureMetadataFrontmatter } from "./resource-content.js";
 import { parseSourceReference, resolveSourcePath } from "./source-resolver.js";
 import type {
   CommandResource,
@@ -74,6 +76,7 @@ export async function assertValidSkillSource(root: string, skill: SkillResource)
 export async function addSkill(root: string, skill: SkillResource, options?: MutationOptions): Promise<void> {
   const manifest = await loadManifest(root);
   assertCanReplaceResource(manifest, "skill", skill.id, manifest.skills.some((item) => item.id === skill.id), options);
+  assertKindSupported(skill.targets, "skill");
   await assertValidSkillSource(root, skill);
   manifest.skills = manifest.skills.filter((item) => item.id !== skill.id);
   manifest.skills.push(skill);
@@ -96,6 +99,7 @@ export async function getSkill(root: string, id: string): Promise<SkillResource>
 export async function addMcpServer(root: string, mcp: McpResource, options?: MutationOptions): Promise<void> {
   const manifest = await loadManifest(root);
   assertCanReplaceResource(manifest, "mcp", mcp.id, manifest.mcps.some((item) => item.id === mcp.id), options);
+  assertKindSupported(mcp.targets, "mcp");
   manifest.mcps = manifest.mcps.filter((item) => item.id !== mcp.id);
   manifest.mcps.push(mcp);
   await saveManifest(root, manifest);
@@ -120,6 +124,7 @@ export async function addInstruction(
     manifest.instructions.some((item) => item.id === input.id),
     options
   );
+  assertKindSupported(input.targets, "instruction");
   const source =
     input.source ??
     (await writeManagedResource(root, "instructions", input.id, formatInstructionBody(input.body ?? "", input.title)));
@@ -143,6 +148,20 @@ function formatInstructionBody(body: string, title?: string): string {
     return body;
   }
   return `## ${normalizedTitle}\n\n${body}`;
+}
+
+function formatCommandBody(id: string, body: string): string {
+  return ensureMetadataFrontmatter(body, {
+    name: id,
+    description: `Run the ${id} command.`
+  });
+}
+
+function formatSubagentBody(id: string, body: string): string {
+  return ensureMetadataFrontmatter(body, {
+    name: id,
+    description: `Use the ${id} subagent.`
+  });
 }
 
 export async function getInstruction(root: string, id: string): Promise<InstructionResource> {
@@ -193,8 +212,17 @@ export async function addCommand(
   options?: MutationOptions
 ): Promise<void> {
   const manifest = await loadManifest(root);
-  assertCanReplaceResource(manifest, "command", input.id, manifest.commands.some((item) => item.id === input.id), options);
-  const source = input.source ?? (await writeManagedResource(root, "commands", input.id, input.content ?? ""));
+  assertCanReplaceResource(
+    manifest,
+    "command",
+    input.id,
+    manifest.commands.some((item) => item.id === input.id),
+    options
+  );
+  assertKindSupported(input.targets, "command");
+  const source =
+    input.source ??
+    (await writeManagedResource(root, "commands", input.id, formatCommandBody(input.id, input.content ?? "")));
   manifest.commands = manifest.commands.filter((item) => item.id !== input.id);
   manifest.commands.push({ id: input.id, source: `path:${source}`, targets: input.targets });
   if (input.source) {
@@ -209,8 +237,17 @@ export async function addSubagent(
   options?: MutationOptions
 ): Promise<void> {
   const manifest = await loadManifest(root);
-  assertCanReplaceResource(manifest, "subagent", input.id, manifest.subagents.some((item) => item.id === input.id), options);
-  const source = input.source ?? (await writeManagedResource(root, "subagents", input.id, input.content ?? ""));
+  assertCanReplaceResource(
+    manifest,
+    "subagent",
+    input.id,
+    manifest.subagents.some((item) => item.id === input.id),
+    options
+  );
+  assertKindSupported(input.targets, "subagent");
+  const source =
+    input.source ??
+    (await writeManagedResource(root, "subagents", input.id, formatSubagentBody(input.id, input.content ?? "")));
   manifest.subagents = manifest.subagents.filter((item) => item.id !== input.id);
   manifest.subagents.push({ id: input.id, source: `path:${source}`, targets: input.targets });
   if (input.source) {
@@ -240,6 +277,7 @@ export async function addHook(
 ): Promise<void> {
   const manifest = await loadManifest(root);
   assertCanReplaceResource(manifest, "hook", input.id, manifest.hooks.some((item) => item.id === input.id), options);
+  assertKindSupported(input.targets, "hook");
   const source = input.source ?? (await writeManagedHook(root, input.id, input.content ?? ""));
   manifest.hooks = manifest.hooks.filter((item) => item.id !== input.id);
   manifest.hooks.push({ id: input.id, source: `path:${source}`, targets: input.targets });
@@ -292,6 +330,7 @@ export async function setMcpEnabled(root: string, id: string, enabled: boolean):
 export async function addSecret(root: string, secret: SecretResource, options?: MutationOptions): Promise<void> {
   const manifest = await loadManifest(root);
   assertCanReplaceResource(manifest, "secret", secret.id, manifest.secrets.some((item) => item.id === secret.id), options);
+  assertKindSupported(secret.targets, "secret");
   manifest.secrets = manifest.secrets.filter((item) => item.id !== secret.id);
   manifest.secrets.push(secret);
   await saveManifest(root, manifest);
@@ -300,6 +339,7 @@ export async function addSecret(root: string, secret: SecretResource, options?: 
 export async function addPlugin(root: string, plugin: PluginResource, options?: MutationOptions): Promise<void> {
   const manifest = await loadManifest(root);
   assertCanReplaceResource(manifest, "plugin", plugin.id, manifest.plugins.some((item) => item.id === plugin.id), options);
+  assertKindSupported(plugin.targets, "plugin");
   manifest.plugins = manifest.plugins.filter((item) => item.id !== plugin.id);
   manifest.plugins.push(plugin);
   await saveManifest(root, manifest);

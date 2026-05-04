@@ -48,7 +48,7 @@ describe("fleet sync", () => {
     await runCli(["scope", "init", "--scope", "project"], { cwd: targetB });
     await mkdir(join(sourceRoot, "commands"), { recursive: true });
     await writeFile(commandPath, "---\nname: Security Scan\n---\n\nRun checks.\n", "utf8");
-    await runCli(["command", "add", "--id", "security-scan", "--source", `path:${commandPath}`, "--targets", "codex"], {
+    await runCli(["command", "add", "--id", "security-scan", "--source", `path:${commandPath}`, "--targets", "claude-code"], {
       cwd: sourceRoot
     });
     await runCli(["fleet", "add", "dev-a", targetA], { cwd: sourceRoot });

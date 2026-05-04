@@ -5,6 +5,10 @@ import { describe, expect, test } from "vitest";
 
 import { runCli } from "../src/cli.js";
 
+function validSkillContent(name: string): string {
+  return ["---", `name: ${name}`, `description: Use the ${name} skill.`, "---", "", `# ${name}`].join("\n");
+}
+
 describe("mcp server mode", () => {
   test("serves initialize, tools/list, and tools/call for self-management", async () => {
     const root = await mkdtemp(join(tmpdir(), "use0-kit-mcp-server-"));
@@ -136,7 +140,7 @@ describe("mcp server mode", () => {
       const globalRoot = join(xdgData, "use0-kit", "global");
       const skillDir = join(globalRoot, "skills", "global-skill");
       await mkdir(skillDir, { recursive: true });
-      await writeFile(join(skillDir, "SKILL.md"), "# Global Skill\n", "utf8");
+      await writeFile(join(skillDir, "SKILL.md"), validSkillContent("global-skill"), "utf8");
       await runCli(
         ["skill", "add", "--id", "global-skill", "--source", `path:${skillDir}`, "--targets", "codex"],
         { cwd: globalRoot }

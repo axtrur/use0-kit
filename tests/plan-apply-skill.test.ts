@@ -92,12 +92,12 @@ describe("plan/apply", () => {
         "[[commands]]",
         'id = "security-scan"',
         `source = "path:${join(root, ".use0-kit", "sources", "commands", "security-scan.md")}"`,
-        'targets = ["codex"]',
+        'targets = ["claude-code"]',
         "",
         "[[subagents]]",
         'id = "backend"',
         `source = "path:${join(root, ".use0-kit", "sources", "subagents", "backend.md")}"`,
-        'targets = ["codex"]',
+        'targets = ["opencode", "claude-code"]',
         ""
       ].join("\n")
     );
@@ -105,11 +105,19 @@ describe("plan/apply", () => {
     await mkdir(join(root, ".use0-kit", "sources", "subagents"), { recursive: true });
     await writeFile(
       join(root, ".use0-kit", "sources", "commands", "security-scan.md"),
-      ["---", "agentkit/codex/effort: high", "---", "", "Run checks."].join("\n")
+      ["---", "agentkit/claude-code/effort: high", "---", "", "Run checks."].join("\n")
     );
     await writeFile(
       join(root, ".use0-kit", "sources", "subagents", "backend.md"),
-      ["---", "agentkit/codex/model: fast", "---", "", "Own backend."].join("\n")
+      [
+        "---",
+        "name: backend",
+        "description: Own backend implementation tasks.",
+        "agentkit/opencode/model: fast",
+        "---",
+        "",
+        "Own backend."
+      ].join("\n")
     );
 
     const manifest = await loadManifest(root);
@@ -132,12 +140,16 @@ describe("plan/apply", () => {
     expect(await readFile(join(root, ".use0-kit", "store", "subagents", "backend.md"), "utf8")).toContain(
       "Own backend."
     );
-    expect(await readFile(join(root, ".codex", "commands", "security-scan.md"), "utf8")).toContain(
+    expect(await readFile(join(root, ".claude", "commands", "security-scan.md"), "utf8")).toContain(
       "effort: high"
     );
-    expect(await readFile(join(root, ".codex", "subagents", "backend.md"), "utf8")).toContain(
+    expect(await readFile(join(root, ".opencode", "subagents", "backend.md"), "utf8")).toContain(
       "model: fast"
     );
+    const claudeSubagent = await readFile(join(root, ".claude", "agents", "backend.md"), "utf8");
+    expect(claudeSubagent).toContain("name: backend");
+    expect(claudeSubagent).toContain("description: Own backend implementation tasks.");
+    expect(claudeSubagent).not.toContain("model: fast");
   });
 
   test("stores hook and secret bindings and writes materialized outputs", async () => {
@@ -166,7 +178,7 @@ describe("plan/apply", () => {
         'id = "openai"',
         'env = "OPENAI_API_KEY"',
         "required = true",
-        'targets = ["codex"]',
+        'targets = ["claude-code"]',
         ""
       ].join("\n")
     );
@@ -193,7 +205,7 @@ describe("plan/apply", () => {
     expect(await readFile(join(root, ".use0-kit", "store", "secrets", "openai.json"), "utf8")).toContain(
       "OPENAI_API_KEY"
     );
-    expect(await readFile(join(root, ".codex", "secrets", "openai.json"), "utf8")).toContain(
+    expect(await readFile(join(root, ".claude", "secrets", "openai.json"), "utf8")).toContain(
       "OPENAI_API_KEY"
     );
   });

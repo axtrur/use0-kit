@@ -58,7 +58,7 @@
     {
       "id": "init-project",
       "cwd": "${project}",
-      "run": ["scope", "init", "--scope", "project", "--agents", "codex"],
+      "run": ["scope", "init", "--scope", "project", "--agents", "codex,claude-code"],
       "assert": {
         "filesExist": ["use0-kit.toml"]
       }
@@ -66,7 +66,7 @@
     {
       "id": "project-command",
       "cwd": "${project}",
-      "run": ["command", "add", "project-check", "--content", "npm test", "--targets", "codex"],
+      "run": ["command", "add", "project-check", "--content", "npm test", "--targets", "claude-code"],
       "assert": {
         "filesExist": [".use0-kit/sources/commands/project-check.md"]
       }
@@ -74,7 +74,7 @@
     {
       "id": "effective-list",
       "cwd": "${project}",
-      "run": ["list", "--effective", "--agent", "codex"],
+      "run": ["list", "--effective"],
       "assert": {
         "stdoutContains": ["skill:global-review", "instruction:workspacerules", "command:project-check"]
       }
@@ -90,7 +90,7 @@
     {
       "id": "pin-global-to-project",
       "cwd": "${project}",
-      "run": ["scope", "sync", "--from", "global", "--to", "project", "skill:global-review", "--mode", "pin", "--apply", "--agent", "codex"],
+      "run": ["scope", "sync", "--from", "global", "--to", "project", "skill:global-review", "--mode", "pin", "--apply", "--agent", "codex,claude-code"],
       "assert": {
         "stdoutContains": ["Synced 1 resource"],
         "filesExist": [".codex/skills/global-review/SKILL.md"],

@@ -11,7 +11,7 @@ describe("secret resources", () => {
     await runCli(["scope", "init", "--scope", "project"], { cwd: root });
 
     await runCli(
-      ["secret", "add", "--id", "openai", "--env", "OPENAI_API_KEY", "--targets", "codex,claude-code"],
+      ["secret", "add", "--id", "openai", "--env", "OPENAI_API_KEY", "--targets", "claude-code,opencode"],
       { cwd: root }
     );
 
@@ -31,7 +31,7 @@ describe("secret resources", () => {
     const root = await mkdtemp(join(tmpdir(), "use0-kit-secret-doctor-"));
     await runCli(["scope", "init", "--scope", "project"], { cwd: root });
     await runCli(
-      ["secret", "add", "--id", "openai", "--env", "OPENAI_API_KEY", "--targets", "codex"],
+      ["secret", "add", "--id", "openai", "--env", "OPENAI_API_KEY", "--targets", "claude-code"],
       { cwd: root }
     );
 

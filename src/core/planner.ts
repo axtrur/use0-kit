@@ -1,12 +1,13 @@
 import { join } from "node:path";
 
+import { expandSupportedTargets, isKindSupported } from "./agent-profiles.js";
 import { AGENTS } from "./agents.js";
 import { renderInstructions } from "./instructions.js";
 import { renderMcpConfig } from "./mcp.js";
 import { applyHostOverlay } from "./overlay.js";
 import { loadResourceContent } from "./resources.js";
 import { resolveSkillSourcePath, resolveSourcePath } from "./source-resolver.js";
-import { expandTargets, targetMatches } from "./targets.js";
+import { targetMatches } from "./targets.js";
 import type {
   AgentId,
   CommandResource,
@@ -48,7 +49,7 @@ async function buildTextResourceActions(
     }
   ];
 
-  for (const agentId of expandTargets(resource.targets, AGENTS_LIST)) {
+  for (const agentId of expandSupportedTargets(resource.targets, AGENTS_LIST, kind)) {
     const destinationDir =
       kind === "command"
         ? AGENTS[agentId].commandDir(root)
@@ -89,7 +90,7 @@ function buildSecretActions(root: string, storeRoot: string, secret: SecretResou
     }
   ];
 
-  for (const agentId of expandTargets(secret.targets, AGENTS_LIST)) {
+  for (const agentId of expandSupportedTargets(secret.targets, AGENTS_LIST, "secret")) {
     actions.push({
       kind: "write-generated-resource",
       resourceId: `secret:${secret.id}`,
@@ -158,7 +159,7 @@ export async function buildPlan(input: {
           }
         ];
 
-        for (const agentId of expandTargets(skill.targets, AGENTS_LIST)) {
+        for (const agentId of expandSupportedTargets(skill.targets, AGENTS_LIST, "skill")) {
           actions.push({
             kind: "link-skill",
             resourceId: `skill:${skill.id}`,
@@ -194,6 +195,7 @@ export async function buildPlan(input: {
     buildDescriptorActions(storeRoot, "plugin", plugin)
   );
   const mcpActions = input.manifest.agents
+    .filter((agentId) => isKindSupported(agentId, "mcp"))
     .filter((agentId) => input.manifest.mcps.some((mcp) => targetMatches(mcp.targets, agentId)))
     .map((agentId) => {
       const rendered = renderMcpConfig({
@@ -213,6 +215,7 @@ export async function buildPlan(input: {
   const instructionActions = (
     await Promise.all(
       input.manifest.agents
+        .filter((agentId) => isKindSupported(agentId, "instruction"))
         .filter((agentId) =>
           input.manifest.instructions.some((instruction) => targetMatches(instruction.targets, agentId))
         )

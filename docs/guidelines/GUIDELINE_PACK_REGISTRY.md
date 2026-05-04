@@ -22,9 +22,9 @@ mkdir -p "$PRODUCER" "$CONSUMER"
 
 ```bash
 cd "$PRODUCER"
-use0-kit scope init --scope project --agents codex
+use0-kit scope init --scope project --agents codex,claude-code
 use0-kit skill init repo-conventions --targets codex
-use0-kit command add repo-check --content "npm test" --targets codex
+use0-kit command add repo-check --content "npm test" --targets claude-code
 ```
 
 Expected:
@@ -74,10 +74,10 @@ use0-kit search agent | grep -q "pack:agent-dev"
 
 ```bash
 cd "$CONSUMER"
-use0-kit scope init --scope project --agents codex
+use0-kit scope init --scope project --agents codex,claude-code
 use0-kit registry add local "$REGISTRY"
 use0-kit registry sync local
-use0-kit install pack:agent-dev --registry local --apply --agent codex --verify
+use0-kit install pack:agent-dev --registry local --apply --agent codex,claude-code --verify
 ```
 
 Expected:
@@ -85,7 +85,7 @@ Expected:
 ```bash
 use0-kit list pack:agent-dev skill:repo-conventions command:repo-check | sort
 test -f .codex/skills/repo-conventions/SKILL.md
-test -f .codex/commands/repo-check.md
+test -f .claude/commands/repo-check.md
 ```
 
 ## 5. Verify Consumer Health

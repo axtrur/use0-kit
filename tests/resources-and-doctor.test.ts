@@ -15,10 +15,15 @@ import {
   addInstruction,
   addMcpServer,
   addSkill,
+  addSubagent,
   removeSkill
 } from "../src/core/resources.js";
 import { initScope } from "../src/core/scope.js";
 import { runDoctor, runDoctorForSelector } from "../src/core/doctor.js";
+
+function validSkillContent(name: string): string {
+  return ["---", `name: ${name}`, `description: Use the ${name} skill.`, "---", "", `# ${name}`].join("\n");
+}
 
 describe("resource mutations and doctor", () => {
   test("adds and removes MVP1 resources from the manifest", async () => {
@@ -70,7 +75,7 @@ describe("resource mutations and doctor", () => {
     const skillDir = join(root, "fixtures", "skills", "repo-conventions");
 
     await mkdir(skillDir, { recursive: true });
-    await writeFile(join(skillDir, "SKILL.md"), "# Repo Conventions", "utf8");
+    await writeFile(join(skillDir, "SKILL.md"), validSkillContent("repo-conventions"), "utf8");
 
     await initScope({ cwd: root, scope: "project" });
     await addSkill(root, {
@@ -109,6 +114,107 @@ describe("resource mutations and doctor", () => {
     );
   });
 
+  test("doctor reports missing metadata frontmatter for local skill command and subagent sources", async () => {
+    const root = await mkdtemp(join(tmpdir(), "use0-kit-doctor-resource-content-"));
+    const skillDir = join(root, "fixtures", "skills", "bad-skill");
+    const commandPath = join(root, "fixtures", "commands", "bad-command.md");
+    const subagentPath = join(root, "fixtures", "subagents", "bad-subagent.md");
+
+    await mkdir(skillDir, { recursive: true });
+    await mkdir(join(root, "fixtures", "commands"), { recursive: true });
+    await mkdir(join(root, "fixtures", "subagents"), { recursive: true });
+    await writeFile(join(skillDir, "SKILL.md"), "# Bad Skill\n", "utf8");
+    await writeFile(commandPath, "npm test\n", "utf8");
+    await writeFile(subagentPath, "Review backend changes.\n", "utf8");
+
+    await initScope({ cwd: root, scope: "project" });
+    await addSkill(root, {
+      id: "bad-skill",
+      source: `path:${skillDir}`,
+      targets: ["codex"]
+    });
+    await addCommand(root, {
+      id: "bad-command",
+      source: `path:${commandPath}`,
+      targets: ["claude-code"]
+    });
+    await addSubagent(root, {
+      id: "bad-subagent",
+      source: `path:${subagentPath}`,
+      targets: ["claude-code"]
+    });
+    await refreshLock(root);
+
+    const report = await runDoctor(root);
+    expect(report.ok).toBe(false);
+    expect(report.checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "resource-content",
+          status: "error",
+          detail: expect.stringContaining("skill:bad-skill:missing-frontmatter")
+        })
+      ])
+    );
+    expect(report.checks.find((check) => check.id === "resource-content")?.detail).toContain(
+      "command:bad-command:missing-frontmatter"
+    );
+    expect(report.checks.find((check) => check.id === "resource-content")?.detail).toContain(
+      "subagent:bad-subagent:missing-frontmatter"
+    );
+  });
+
+  test("doctor reports non-standard id metadata in skill command and subagent sources", async () => {
+    const root = await mkdtemp(join(tmpdir(), "use0-kit-doctor-id-metadata-"));
+    const skillDir = join(root, "fixtures", "skills", "legacy-skill");
+    const commandPath = join(root, "fixtures", "commands", "legacy-command.md");
+    const subagentPath = join(root, "fixtures", "subagents", "legacy-subagent.md");
+
+    await mkdir(skillDir, { recursive: true });
+    await mkdir(join(root, "fixtures", "commands"), { recursive: true });
+    await mkdir(join(root, "fixtures", "subagents"), { recursive: true });
+    await writeFile(
+      join(skillDir, "SKILL.md"),
+      ["---", "id: legacy-skill", "name: legacy-skill", "description: Legacy skill.", "---", "", "# Legacy"].join("\n"),
+      "utf8"
+    );
+    await writeFile(
+      commandPath,
+      ["---", "id: legacy-command", "name: legacy-command", "description: Legacy command.", "---", "", "Run checks."].join("\n"),
+      "utf8"
+    );
+    await writeFile(
+      subagentPath,
+      ["---", "id: legacy-subagent", "name: legacy-subagent", "description: Legacy subagent.", "---", "", "Review."].join("\n"),
+      "utf8"
+    );
+
+    await initScope({ cwd: root, scope: "project" });
+    await addSkill(root, {
+      id: "legacy-skill",
+      source: `path:${skillDir}`,
+      targets: ["codex"]
+    });
+    await addCommand(root, {
+      id: "legacy-command",
+      source: `path:${commandPath}`,
+      targets: ["claude-code"]
+    });
+    await addSubagent(root, {
+      id: "legacy-subagent",
+      source: `path:${subagentPath}`,
+      targets: ["claude-code"]
+    });
+    await refreshLock(root);
+
+    const report = await runDoctor(root);
+    const detail = report.checks.find((check) => check.id === "resource-content")?.detail ?? "";
+    expect(report.ok).toBe(false);
+    expect(detail).toContain("skill:legacy-skill:unsupported-id-field");
+    expect(detail).toContain("command:legacy-command:unsupported-id-field");
+    expect(detail).toContain("subagent:legacy-subagent:unsupported-id-field");
+  });
+
   test("reports known agent paths and local detection", async () => {
     const root = await mkdtemp(join(tmpdir(), "use0-kit-agents-"));
 
@@ -128,6 +234,7 @@ describe("resource mutations and doctor", () => {
     expect(paths.codex.markerPath).toBe(join(root, ".codex", "config.toml"));
     expect(paths.codex.skillDir).toBe(join(root, ".codex", "skills"));
     expect(paths.codex.mcpConfigPath).toBe(join(root, ".codex", "config.toml"));
+    expect(paths["claude-code"].subagentDir).toBe(join(root, ".claude", "agents"));
     expect(paths["claude-code"].instructionPath).toBe(join(root, "CLAUDE.md"));
   });
 
@@ -201,7 +308,7 @@ describe("resource mutations and doctor", () => {
     await addCommand(root, {
       id: "security-scan",
       source: "inline:echo%20safe",
-      targets: ["codex"]
+      targets: ["claude-code"]
     });
 
     const manifest = await loadManifest(root);
@@ -306,7 +413,7 @@ describe("resource mutations and doctor", () => {
     const skillDir = join(root, "fixtures", "skills", "universal-skill");
 
     await mkdir(skillDir, { recursive: true });
-    await writeFile(join(skillDir, "SKILL.md"), "# Universal Skill", "utf8");
+    await writeFile(join(skillDir, "SKILL.md"), validSkillContent("universal-skill"), "utf8");
 
     await initScope({ cwd: root, scope: "project" });
     await addSkill(root, {

@@ -18,9 +18,14 @@ describe("skill init and update", () => {
     expect(initialInfo).toContain("source=path:");
     expect(initialInfo).toContain(".use0-kit/sources/skills/repo-conventions");
     expect(initialInfo).toContain("targets=codex");
-    expect(await readFile(join(root, ".use0-kit", "sources", "skills", "repo-conventions", "SKILL.md"), "utf8")).toContain(
-      "Describe the repo-conventions skill here."
+    const initializedSkill = await readFile(
+      join(root, ".use0-kit", "sources", "skills", "repo-conventions", "SKILL.md"),
+      "utf8"
     );
+    expect(initializedSkill).toContain("name: repo-conventions");
+    expect(initializedSkill).toContain("description:");
+    expect(initializedSkill).not.toContain("id: repo-conventions");
+    expect(initializedSkill).toContain("Describe the repo-conventions skill here.");
 
     const updatedSkillDir = join(root, ".use0-kit", "sources", "skills", "updated-conventions");
     await mkdir(updatedSkillDir, { recursive: true });

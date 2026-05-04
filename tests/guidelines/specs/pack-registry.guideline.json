@@ -18,7 +18,7 @@
     {
       "id": "init-producer",
       "cwd": "${producer}",
-      "run": ["scope", "init", "--scope", "project", "--agents", "codex"]
+      "run": ["scope", "init", "--scope", "project", "--agents", "codex,claude-code"]
     },
     {
       "id": "producer-skill",
@@ -31,7 +31,7 @@
     {
       "id": "producer-command",
       "cwd": "${producer}",
-      "run": ["command", "add", "repo-check", "--content", "npm test", "--targets", "codex"],
+      "run": ["command", "add", "repo-check", "--content", "npm test", "--targets", "claude-code"],
       "assert": {
         "filesExist": [".use0-kit/sources/commands/repo-check.md"]
       }
@@ -129,7 +129,7 @@
     {
       "id": "init-consumer",
       "cwd": "${consumer}",
-      "run": ["scope", "init", "--scope", "project", "--agents", "codex"]
+      "run": ["scope", "init", "--scope", "project", "--agents", "codex,claude-code"]
     },
     {
       "id": "consumer-registry-add",
@@ -147,10 +147,10 @@
     {
       "id": "consumer-install-pack",
       "cwd": "${consumer}",
-      "run": ["install", "pack:agent-dev", "--registry", "local", "--apply", "--agent", "codex", "--verify"],
+      "run": ["install", "pack:agent-dev", "--registry", "local", "--apply", "--agent", "codex,claude-code", "--verify"],
       "assert": {
         "stdoutContains": ["Installed pack:agent-dev"],
-        "filesExist": [".codex/skills/repo-conventions/SKILL.md", ".codex/commands/repo-check.md"]
+        "filesExist": [".codex/skills/repo-conventions/SKILL.md", ".claude/commands/repo-check.md"]
       }
     },
     {

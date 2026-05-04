@@ -62,7 +62,7 @@ describe("lock and update lifecycle", () => {
       { cwd: root }
     );
     await runCli(
-      ["command", "add", "security-scan", `inline:${encodeURIComponent("echo scan\n")}`, "--targets", "codex"],
+      ["command", "add", "security-scan", `inline:${encodeURIComponent("echo scan\n")}`, "--targets", "claude-code"],
       { cwd: root }
     );
 
@@ -123,7 +123,7 @@ describe("lock and update lifecycle", () => {
         { cwd: globalRoot }
       );
       await runCli(
-        ["command", "add", "--id", "security-scan", "--source", `path:${join(commandDir, "security-scan.md")}`, "--targets", "codex"],
+        ["command", "add", "--id", "security-scan", "--source", `path:${join(commandDir, "security-scan.md")}`, "--targets", "claude-code"],
         { cwd: globalRoot }
       );
 

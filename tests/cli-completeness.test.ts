@@ -5,6 +5,10 @@ import { describe, expect, test } from "vitest";
 
 import { runCli } from "../src/cli.js";
 
+function validSkillContent(name: string): string {
+  return ["---", `name: ${name}`, `description: Use the ${name} skill.`, "---", "", `# ${name}`].join("\n");
+}
+
 describe("CLI completeness helpers", () => {
   test("supports top-level init with scope and agents options", async () => {
     const root = await mkdtemp(join(tmpdir(), "use0-kit-top-init-"));
@@ -91,11 +95,11 @@ describe("CLI completeness helpers", () => {
       { cwd: root }
     );
     await runCli(
-      ["command", "add", "--id", "security-scan", "--content", "echo hi", "--targets", "codex"],
+      ["command", "add", "--id", "security-scan", "--content", "echo hi", "--targets", "claude-code"],
       { cwd: root }
     );
     await runCli(
-      ["subagent", "add", "--id", "backend", "--content", "You own backend changes.", "--targets", "codex"],
+      ["subagent", "add", "--id", "backend", "--content", "You own backend changes.", "--targets", "claude-code"],
       { cwd: root }
     );
     await runCli(["backup", "create"], { cwd: root });
@@ -158,7 +162,7 @@ describe("CLI completeness helpers", () => {
       const globalRoot = join(xdgData, "use0-kit", "global");
       const skillDir = join(globalRoot, "skills", "global-skill");
       await mkdir(skillDir, { recursive: true });
-      await writeFile(join(skillDir, "SKILL.md"), "# Global Skill\n", "utf8");
+      await writeFile(join(skillDir, "SKILL.md"), validSkillContent("global-skill"), "utf8");
       await runCli(
         ["skill", "add", "--id", "global-skill", "--source", `path:${skillDir}`, "--targets", "codex"],
         { cwd: globalRoot }
@@ -189,7 +193,7 @@ describe("CLI completeness helpers", () => {
       const globalRoot = join(xdgData, "use0-kit", "global");
       const skillDir = join(globalRoot, "skills", "global-skill");
       await mkdir(skillDir, { recursive: true });
-      await writeFile(join(skillDir, "SKILL.md"), "# Global Skill\n", "utf8");
+      await writeFile(join(skillDir, "SKILL.md"), validSkillContent("global-skill"), "utf8");
       await runCli(
         ["skill", "add", "--id", "global-skill", "--source", `path:${skillDir}`, "--targets", "codex"],
         { cwd: globalRoot }
@@ -210,7 +214,7 @@ describe("CLI completeness helpers", () => {
     const skillDir = join(root, "skills", "repo-conventions");
 
     await mkdir(skillDir, { recursive: true });
-    await writeFile(join(skillDir, "SKILL.md"), "# Repo Conventions\n", "utf8");
+    await writeFile(join(skillDir, "SKILL.md"), validSkillContent("repo-conventions"), "utf8");
 
     await runCli(["scope", "init", "--scope", "project"], { cwd: root });
     await runCli(["skill", "add", "--id", "repo-conventions", "--source", `path:${skillDir}`, "--targets", "codex"], {
@@ -227,7 +231,7 @@ describe("CLI completeness helpers", () => {
     const skillDir = join(root, "skills", "repo-conventions");
 
     await mkdir(skillDir, { recursive: true });
-    await writeFile(join(skillDir, "SKILL.md"), "# Repo Conventions\n", "utf8");
+    await writeFile(join(skillDir, "SKILL.md"), validSkillContent("repo-conventions"), "utf8");
 
     await runCli(["scope", "init", "--scope", "project"], { cwd: root });
     await runCli(["skill", "add", "--id", "repo-conventions", "--source", `path:${skillDir}`, "--targets", "codex"], {
@@ -456,7 +460,7 @@ describe("CLI completeness helpers", () => {
       const globalRoot = join(xdgData, "use0-kit", "global");
       const skillDir = join(globalRoot, "skills", "global-skill");
       await mkdir(skillDir, { recursive: true });
-      await writeFile(join(skillDir, "SKILL.md"), "# Global Skill\n", "utf8");
+      await writeFile(join(skillDir, "SKILL.md"), validSkillContent("global-skill"), "utf8");
       await runCli(
         ["skill", "add", "--id", "global-skill", "--source", `path:${skillDir}`, "--targets", "codex"],
         { cwd: globalRoot }
@@ -498,7 +502,7 @@ describe("CLI completeness helpers", () => {
       const userRoot = join(xdgConfig, "use0-kit");
       const skillDir = join(globalRoot, "skills", "global-skill");
       await mkdir(skillDir, { recursive: true });
-      await writeFile(join(skillDir, "SKILL.md"), "# Global Skill\n", "utf8");
+      await writeFile(join(skillDir, "SKILL.md"), validSkillContent("global-skill"), "utf8");
 
       await runCli(
         ["skill", "add", "--id", "global-skill", "--source", `path:${skillDir}`, "--targets", "codex"],
@@ -566,7 +570,7 @@ describe("CLI completeness helpers", () => {
       const globalRoot = join(xdgData, "use0-kit", "global");
       const skillDir = join(globalRoot, "skills", "global-skill");
       await mkdir(skillDir, { recursive: true });
-      await writeFile(join(skillDir, "SKILL.md"), "# Global Skill\n", "utf8");
+      await writeFile(join(skillDir, "SKILL.md"), validSkillContent("global-skill"), "utf8");
       await runCli(
         ["skill", "add", "--id", "global-skill", "--source", `path:${skillDir}`, "--targets", "codex"],
         { cwd: globalRoot }
@@ -620,7 +624,7 @@ describe("CLI completeness helpers", () => {
       const globalRoot = join(xdgData, "use0-kit", "global");
       const skillDir = join(globalRoot, "skills", "global-skill");
       await mkdir(skillDir, { recursive: true });
-      await writeFile(join(skillDir, "SKILL.md"), "# Global Skill\n", "utf8");
+      await writeFile(join(skillDir, "SKILL.md"), validSkillContent("global-skill"), "utf8");
       await runCli(
         ["skill", "add", "--id", "global-skill", "--source", `path:${skillDir}`, "--targets", "codex"],
         { cwd: globalRoot }

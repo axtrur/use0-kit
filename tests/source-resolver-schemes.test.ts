@@ -31,7 +31,7 @@ describe("source resolver schemes", () => {
     try {
       await runCli(["scope", "init", "--scope", "project"], { cwd: root });
       await runCli(
-        ["command", "add", "--id", "security-scan", "--source", `url:${url}`, "--targets", "codex"],
+        ["command", "add", "--id", "security-scan", "--source", `url:${url}`, "--targets", "claude-code"],
         { cwd: root }
       );
       await runCli(
@@ -43,17 +43,17 @@ describe("source resolver schemes", () => {
           "--source",
           `inline:${encodeURIComponent("---\nname: Backend Specialist\n---\n\nOwn API changes.\n")}`,
           "--targets",
-          "codex"
+          "claude-code"
         ],
         { cwd: root }
       );
 
       const renderedCommand = await runCli(
-        ["command", "render", "security-scan", "--agent", "codex"],
+        ["command", "render", "security-scan", "--agent", "claude-code"],
         { cwd: root }
       );
       const renderedSubagent = await runCli(
-        ["subagent", "render", "backend", "--agent", "codex"],
+        ["subagent", "render", "backend", "--agent", "claude-code"],
         { cwd: root }
       );
 
@@ -61,10 +61,10 @@ describe("source resolver schemes", () => {
       expect(renderedSubagent).toContain("Own API changes.");
 
       await runCli(["apply"], { cwd: root });
-      expect(await readFile(join(root, ".codex", "commands", "security-scan.md"), "utf8")).toContain(
+      expect(await readFile(join(root, ".claude", "commands", "security-scan.md"), "utf8")).toContain(
         "Run remote checks."
       );
-      expect(await readFile(join(root, ".codex", "subagents", "backend.md"), "utf8")).toContain(
+      expect(await readFile(join(root, ".claude", "agents", "backend.md"), "utf8")).toContain(
         "Own API changes."
       );
     } finally {
@@ -88,22 +88,22 @@ describe("source resolver schemes", () => {
 
     try {
       await runCli(["scope", "init", "--scope", "project"], { cwd: cachedRoot });
-      await runCli(["command", "add", "offline-command", `url:${url}`, "--targets", "codex"], { cwd: cachedRoot });
-      expect(await runCli(["command", "render", "offline-command", "--agent", "codex"], { cwd: cachedRoot })).toContain(
+      await runCli(["command", "add", "offline-command", `url:${url}`, "--targets", "claude-code"], { cwd: cachedRoot });
+      expect(await runCli(["command", "render", "offline-command", "--agent", "claude-code"], { cwd: cachedRoot })).toContain(
         "Offline-capable command."
       );
 
       await runCli(["scope", "init", "--scope", "project"], { cwd: uncachedRoot });
-      await runCli(["command", "add", "offline-command", `url:${url}`, "--targets", "codex"], { cwd: uncachedRoot });
+      await runCli(["command", "add", "offline-command", `url:${url}`, "--targets", "claude-code"], { cwd: uncachedRoot });
     } finally {
       server.close();
     }
 
     expect(
-      await runCli(["command", "render", "offline-command", "--agent", "codex", "--offline"], { cwd: cachedRoot })
+      await runCli(["command", "render", "offline-command", "--agent", "claude-code", "--offline"], { cwd: cachedRoot })
     ).toContain("Offline-capable command.");
     await expect(
-      runCli(["command", "render", "offline-command", "--agent", "codex", "--offline"], { cwd: uncachedRoot })
+      runCli(["command", "render", "offline-command", "--agent", "claude-code", "--offline"], { cwd: uncachedRoot })
     ).rejects.toThrow(/Offline mode prevents fetching URL source/);
   });
 
@@ -132,7 +132,7 @@ describe("source resolver schemes", () => {
 
     try {
       await runCli(["scope", "init", "--scope", "project"], { cwd: root });
-      await runCli(["command", "add", "namespaced-command", `url:${base}/command.md`, "--targets", "codex"], {
+      await runCli(["command", "add", "namespaced-command", `url:${base}/command.md`, "--targets", "claude-code"], {
         cwd: root
       });
       await runCli(
@@ -142,7 +142,7 @@ describe("source resolver schemes", () => {
           "namespaced-backend",
           `inline:${encodeURIComponent("Own namespaced backend changes.")}`,
           "--targets",
-          "codex"
+          "claude-code"
         ],
         { cwd: root }
       );
@@ -151,10 +151,10 @@ describe("source resolver schemes", () => {
       });
 
       await runCli(["apply"], { cwd: root });
-      expect(await readFile(join(root, ".codex", "commands", "namespaced-command.md"), "utf8")).toContain(
+      expect(await readFile(join(root, ".claude", "commands", "namespaced-command.md"), "utf8")).toContain(
         "Run namespaced command."
       );
-      expect(await readFile(join(root, ".codex", "subagents", "namespaced-backend.md"), "utf8")).toContain(
+      expect(await readFile(join(root, ".claude", "agents", "namespaced-backend.md"), "utf8")).toContain(
         "Own namespaced backend changes."
       );
       expect(await readFile(join(root, ".codex", "hooks", "namespaced-hook.sh"), "utf8")).toContain(
@@ -250,7 +250,7 @@ describe("source resolver schemes", () => {
         { cwd: root }
       );
       await runCli(
-        ["command", "add", "security-scan", "ssh:git@github.com:owner/repo.git@main#commands/security-scan.md", "--targets", "codex"],
+        ["command", "add", "security-scan", "ssh:git@github.com:owner/repo.git@main#commands/security-scan.md", "--targets", "claude-code"],
         { cwd: root }
       );
 
@@ -258,7 +258,7 @@ describe("source resolver schemes", () => {
       expect(await readFile(join(root, ".codex", "skills", "frontend-review", "SKILL.md"), "utf8")).toContain(
         "Frontend Review"
       );
-      expect(await readFile(join(root, ".codex", "commands", "security-scan.md"), "utf8")).toContain(
+      expect(await readFile(join(root, ".claude", "commands", "security-scan.md"), "utf8")).toContain(
         "Run SSH-backed checks."
       );
     } finally {

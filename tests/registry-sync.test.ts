@@ -8,8 +8,11 @@ import { runCli } from "../src/cli.js";
 
 async function createRegistrySkill(root: string, id: string, content: string): Promise<string> {
   const skillDir = join(root, "registry-skills", id);
+  const skillContent = content.trimStart().startsWith("---")
+    ? content
+    : ["---", `name: ${id}`, `description: Registry skill ${id}.`, "---", "", content.trimEnd()].join("\n");
   await mkdir(skillDir, { recursive: true });
-  await writeFile(join(skillDir, "SKILL.md"), content, "utf8");
+  await writeFile(join(skillDir, "SKILL.md"), skillContent, "utf8");
   return `path:${skillDir}`;
 }
 

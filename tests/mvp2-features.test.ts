@@ -22,14 +22,14 @@ describe("MVP2 features", () => {
           "id: security-scan",
           "name: Security Scan",
           "description: Run security checks.",
-          "agentkit/codex/effort: high",
+          "agentkit/opencode/effort: high",
           "agentkit/claude-code/model: haiku",
           "---",
           "",
           "Run npm audit and report findings."
         ].join("\n"),
         "--targets",
-        "codex,claude-code"
+        "opencode,claude-code"
       ],
       { cwd: root }
     );
@@ -45,37 +45,37 @@ describe("MVP2 features", () => {
           "id: backend",
           "name: Backend Specialist",
           "description: Focus on backend tasks.",
-          "agentkit/codex/effort: high",
+          "agentkit/opencode/effort: high",
           "agentkit/cursor/model: fast",
           "---",
           "",
           "You own API and storage changes."
         ].join("\n"),
         "--targets",
-        "codex,cursor"
+        "opencode,cursor"
       ],
       { cwd: root }
     );
 
-    const codexCommand = await runCli(
-      ["command", "render", "--id", "security-scan", "--agent", "codex"],
+    const opencodeCommand = await runCli(
+      ["command", "render", "--id", "security-scan", "--agent", "opencode"],
       { cwd: root }
     );
     const claudeCommand = await runCli(
       ["command", "render", "--id", "security-scan", "--agent", "claude-code"],
       { cwd: root }
     );
-    const codexSubagent = await runCli(
-      ["subagent", "render", "--id", "backend", "--agent", "codex"],
+    const opencodeSubagent = await runCli(
+      ["subagent", "render", "--id", "backend", "--agent", "opencode"],
       { cwd: root }
     );
 
-    expect(codexCommand).toContain("effort: high");
-    expect(codexCommand).not.toContain("agentkit/codex/effort");
-    expect(codexCommand).not.toContain("agentkit/claude-code/model");
+    expect(opencodeCommand).toContain("effort: high");
+    expect(opencodeCommand).not.toContain("agentkit/opencode/effort");
+    expect(opencodeCommand).not.toContain("agentkit/claude-code/model");
     expect(claudeCommand).toContain("model: haiku");
-    expect(codexSubagent).toContain("effort: high");
-    expect(codexSubagent).not.toContain("agentkit/cursor/model");
+    expect(opencodeSubagent).toContain("effort: high");
+    expect(opencodeSubagent).not.toContain("agentkit/cursor/model");
   });
 
   test("supports pack init add export install plus backup/restore", async () => {

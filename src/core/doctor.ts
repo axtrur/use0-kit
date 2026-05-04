@@ -3,6 +3,7 @@ import { delimiter } from "node:path";
 import { join, resolve } from "node:path";
 
 import { checkPackApprovals } from "./approvals.js";
+import { isKindSupported, type ResourceKind } from "./agent-profiles.js";
 import { AGENTS } from "./agents.js";
 import { listAgents } from "./agents-runtime.js";
 import { applyPlan } from "./apply.js";
@@ -14,8 +15,9 @@ import { lookupSignerSecret, verifyPackSignature } from "./pack-signatures.js";
 import { createBackup } from "./packs.js";
 import { buildPlan } from "./planner.js";
 import { evaluatePolicy } from "./policy.js";
-import { computeSourceDigest } from "./source-resolver.js";
-import type { ResourceTarget } from "./types.js";
+import { validateResourceSourceContent } from "./resource-content.js";
+import { computeSourceDigest, resolveSourcePath } from "./source-resolver.js";
+import type { AgentId, ResourceTarget } from "./types.js";
 
 function isSupportedTarget(target: ResourceTarget, supportedAgents: Set<string>): boolean {
   return target === "*" || target === "universal" || supportedAgents.has(target);
@@ -106,7 +108,7 @@ export async function runDoctorForSelector(root: string, selector?: string): Pro
         continue;
       }
       try {
-        await access(resource.source.slice("path:".length));
+        await access(await resolveSourcePath(root, resource.source));
       } catch {
         missing += 1;
       }
@@ -115,6 +117,44 @@ export async function runDoctorForSelector(root: string, selector?: string): Pro
       id: "local-sources",
       status: missing === 0 ? "ok" : "error",
       detail: missing === 0 ? "All local resource sources exist." : `${missing} local source(s) missing.`
+    });
+
+    const contentResources = [
+      ...manifest.skills.map((item) => ({
+        selector: `skill:${item.id}`,
+        kind: "skill" as const,
+        source: item.source,
+        expectedName: item.id
+      })),
+      ...manifest.commands.map((item) => ({
+        selector: `command:${item.id}`,
+        kind: "command" as const,
+        source: item.source,
+        expectedName: item.id
+      })),
+      ...manifest.subagents.map((item) => ({
+        selector: `subagent:${item.id}`,
+        kind: "subagent" as const,
+        source: item.source,
+        expectedName: item.id
+      }))
+    ].filter((item) => matchesSelector(item.selector));
+    const contentProblems: string[] = [];
+    for (const resource of contentResources) {
+      const issues = await validateResourceSourceContent(root, {
+        kind: resource.kind,
+        source: resource.source,
+        expectedName: resource.expectedName
+      });
+      contentProblems.push(...issues.map((issue) => `${resource.selector}:${issue}`));
+    }
+    checks.push({
+      id: "resource-content",
+      status: contentProblems.length === 0 ? "ok" : "error",
+      detail:
+        contentProblems.length === 0
+          ? "Skill, command, and subagent sources include required metadata."
+          : `Resource content issue(s): ${contentProblems.join(", ")}`
     });
 
     const supportedAgents = new Set(listAgents());
@@ -136,6 +176,34 @@ export async function runDoctorForSelector(root: string, selector?: string): Pro
         unsupportedTargets.length === 0
           ? "All resource targets are supported."
           : unsupportedTargets.map((entry) => `${entry.id}->${entry.target}`).join(", ")
+    });
+
+    const kindAgentEntries: Array<{ selector: string; kind: ResourceKind; targets: ResourceTarget[] }> = [
+      ...manifest.skills.map((item) => ({ selector: `skill:${item.id}`, kind: "skill" as const, targets: item.targets })),
+      ...manifest.commands.map((item) => ({ selector: `command:${item.id}`, kind: "command" as const, targets: item.targets })),
+      ...manifest.subagents.map((item) => ({ selector: `subagent:${item.id}`, kind: "subagent" as const, targets: item.targets })),
+      ...manifest.instructions.map((item) => ({ selector: `instruction:${item.id}`, kind: "instruction" as const, targets: item.targets })),
+      ...manifest.mcps.map((item) => ({ selector: `mcp:${item.id}`, kind: "mcp" as const, targets: item.targets })),
+      ...manifest.hooks.map((item) => ({ selector: `hook:${item.id}`, kind: "hook" as const, targets: item.targets })),
+      ...manifest.secrets.map((item) => ({ selector: `secret:${item.id}`, kind: "secret" as const, targets: item.targets })),
+      ...manifest.plugins.map((item) => ({ selector: `plugin:${item.id}`, kind: "plugin" as const, targets: item.targets }))
+    ];
+    const unsupportedKindForAgent = kindAgentEntries
+      .filter((entry) => matchesSelector(entry.selector))
+      .flatMap((entry) =>
+        entry.targets
+          .filter((target) => target !== "*" && target !== "universal")
+          .filter((target): target is AgentId => supportedAgents.has(target as AgentId))
+          .filter((target) => !isKindSupported(target, entry.kind))
+          .map((target) => `${entry.selector}->${target}:${entry.kind}-not-supported`)
+      );
+    checks.push({
+      id: "agent-kind-support",
+      status: unsupportedKindForAgent.length === 0 ? "ok" : "error",
+      detail:
+        unsupportedKindForAgent.length === 0
+          ? "All resources target agents that support their kind."
+          : unsupportedKindForAgent.join(", ")
     });
 
     const missingCommands: string[] = [];

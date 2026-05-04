@@ -57,7 +57,7 @@
     {
       "id": "add-command",
       "cwd": "${project}",
-      "run": ["command", "add", "repo-check", "--content", "npm test && npm run build", "--targets", "codex"],
+      "run": ["command", "add", "repo-check", "--content", "npm test && npm run build", "--targets", "claude-code"],
       "assert": {
         "filesExist": [".use0-kit/sources/commands/repo-check.md"],
         "fileContains": {
@@ -98,7 +98,7 @@
     {
       "id": "add-secret",
       "cwd": "${project}",
-      "run": ["secret", "add", "--id", "openai", "--env", "OPENAI_API_KEY", "--targets", "codex"],
+      "run": ["secret", "add", "--id", "openai", "--env", "OPENAI_API_KEY", "--targets", "claude-code"],
       "assert": {
         "fileContains": {
           "use0-kit.toml": ["[[secrets]]", "OPENAI_API_KEY"]
@@ -174,9 +174,9 @@
           ".use0-kit/store/skills/repo-conventions/SKILL.md",
           ".use0-kit/store/commands/repo-check.md",
           ".codex/skills/repo-conventions/SKILL.md",
-          ".codex/commands/repo-check.md",
+          ".claude/commands/repo-check.md",
           ".claude/skills/repo-conventions/SKILL.md",
-          ".claude/subagents/reviewer.md",
+          ".claude/agents/reviewer.md",
           "AGENTS.md",
           "CLAUDE.md"
         ],

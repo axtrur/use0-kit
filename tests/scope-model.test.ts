@@ -149,11 +149,11 @@ describe("scope model", () => {
     await runCli(["scope", "init", "--scope", "session"], { cwd: projectRoot });
 
     await runCli(
-      ["command", "add", "inline:echo%20project", "--id", "shared-cmd", "--targets", "codex"],
+      ["command", "add", "inline:echo%20project", "--id", "shared-cmd", "--targets", "claude-code"],
       { cwd: projectRoot }
     );
     await runCli(
-      ["command", "add", "inline:echo%20session", "--id", "shared-cmd", "--targets", "codex"],
+      ["command", "add", "inline:echo%20session", "--id", "shared-cmd", "--targets", "claude-code"],
       { cwd: join(projectRoot, ".use0-kit", "session") }
     );
 
@@ -168,7 +168,7 @@ describe("scope model", () => {
 
     await runCli(["scope", "init", "--scope", "project"], { cwd: root });
     await runCli(
-      ["command", "add", "--id", "codex-only", "--content", "echo codex", "--targets", "codex"],
+      ["command", "add", "--id", "claude-only", "--content", "echo claude", "--targets", "claude-code"],
       { cwd: root }
     );
     await runCli(
@@ -178,27 +178,27 @@ describe("scope model", () => {
     const skillDir = join(root, ".use0-kit", "sources", "skills", "repo-skill");
     await mkdir(skillDir, { recursive: true });
     await writeFile(join(skillDir, "SKILL.md"), "# Repo Skill\n", "utf8");
-    await runCli(["skill", "add", "--id", "repo-skill", "--source", `path:${skillDir}`, "--targets", "codex"], {
+    await runCli(["skill", "add", "--id", "repo-skill", "--source", `path:${skillDir}`, "--targets", "claude-code"], {
       cwd: root
     });
-    await runCli(["apply", "--agent", "codex"], { cwd: root });
+    await runCli(["apply", "--agent", "claude-code"], { cwd: root });
 
     const commandsOnly = await runCli(["scope", "inspect", "--scope", "project", "--kind", "command"], { cwd: root });
     expect(commandsOnly).toContain("resources=2");
-    expect(commandsOnly).toContain("command:codex-only");
+    expect(commandsOnly).toContain("command:claude-only");
     expect(commandsOnly).toContain("command:cursor-only");
     expect(commandsOnly).not.toContain("skill:repo-skill");
 
-    const codexOnly = await runCli(["scope", "inspect", "--scope", "project", "--kind", "command", "--agent", "codex"], {
+    const claudeOnly = await runCli(["scope", "inspect", "--scope", "project", "--kind", "command", "--agent", "claude-code"], {
       cwd: root
     });
-    expect(codexOnly).toContain("resources=1");
-    expect(codexOnly).toContain("materialized.command:codex-only=");
-    expect(codexOnly).toContain("command:codex-only");
-    expect(codexOnly).not.toContain("command:cursor-only");
+    expect(claudeOnly).toContain("resources=1");
+    expect(claudeOnly).toContain("materialized.command:claude-only=");
+    expect(claudeOnly).toContain("command:claude-only");
+    expect(claudeOnly).not.toContain("command:cursor-only");
 
-    const codexOnlyJson = JSON.parse(
-      await runCli(["scope", "inspect", "--scope", "project", "--kind", "command", "--agent", "codex", "--json"], {
+    const claudeOnlyJson = JSON.parse(
+      await runCli(["scope", "inspect", "--scope", "project", "--kind", "command", "--agent", "claude-code", "--json"], {
         cwd: root
       })
     ) as {
@@ -207,10 +207,10 @@ describe("scope model", () => {
       selectors: string[];
       materialized?: Record<string, Record<string, string | string[]>>;
     };
-    expect(codexOnlyJson.scope).toBe("project");
-    expect(codexOnlyJson.resources).toBe(1);
-    expect(codexOnlyJson.selectors).toEqual(["command:codex-only"]);
-    expect(codexOnlyJson.materialized?.["command:codex-only"]).toBeTruthy();
+    expect(claudeOnlyJson.scope).toBe("project");
+    expect(claudeOnlyJson.resources).toBe(1);
+    expect(claudeOnlyJson.selectors).toEqual(["command:claude-only"]);
+    expect(claudeOnlyJson.materialized?.["command:claude-only"]).toBeTruthy();
   });
 
   test("scope inspect exposes declared parent entries, not just a count", async () => {

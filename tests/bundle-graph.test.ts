@@ -15,15 +15,15 @@ describe("bundle graph resources", () => {
     await runCli(["scope", "init", "--scope", "project"], { cwd: projectRoot });
 
     await runCli(
-      ["command", "add", "--id", "security-scan", "--content", "echo hi", "--targets", "codex"],
+      ["command", "add", "--id", "security-scan", "--content", "echo hi", "--targets", "claude-code"],
       { cwd: globalRoot }
     );
     await runCli(
-      ["subagent", "add", "--id", "backend", "--content", "You own backend.", "--targets", "codex"],
+      ["subagent", "add", "--id", "backend", "--content", "You own backend.", "--targets", "claude-code"],
       { cwd: globalRoot }
     );
     await runCli(
-      ["secret", "add", "--id", "openai", "--env", "OPENAI_API_KEY", "--targets", "codex"],
+      ["secret", "add", "--id", "openai", "--env", "OPENAI_API_KEY", "--targets", "claude-code"],
       { cwd: globalRoot }
     );
     await runCli(["pack", "init", "frontend", "--name", "acme/frontend", "--version", "1.0.0"], {
@@ -89,11 +89,11 @@ describe("bundle graph resources", () => {
     await runCli(["scope", "init", "--scope", "project"], { cwd: syncTarget });
 
     await runCli(
-      ["subagent", "add", "--id", "backend", "--content", "You own backend.", "--targets", "codex"],
+      ["subagent", "add", "--id", "backend", "--content", "You own backend.", "--targets", "claude-code"],
       { cwd: sourceRoot }
     );
     await runCli(
-      ["secret", "add", "--id", "openai", "--env", "OPENAI_API_KEY", "--targets", "codex"],
+      ["secret", "add", "--id", "openai", "--env", "OPENAI_API_KEY", "--targets", "claude-code"],
       { cwd: sourceRoot }
     );
     await runCli(["pack", "init", "frontend", "--name", "acme/frontend", "--version", "1.0.0"], {
@@ -126,11 +126,11 @@ describe("bundle graph resources", () => {
     await runCli(["scope", "init", "--scope", "project"], { cwd: syncTarget });
 
     await runCli(
-      ["subagent", "add", "--id", "backend", "--content", "You own backend.", "--targets", "codex,cursor"],
+      ["subagent", "add", "--id", "backend", "--content", "You own backend.", "--targets", "claude-code,cursor"],
       { cwd: sourceRoot }
     );
     await runCli(
-      ["secret", "add", "--id", "openai", "--env", "OPENAI_API_KEY", "--targets", "codex,cursor"],
+      ["secret", "add", "--id", "openai", "--env", "OPENAI_API_KEY", "--targets", "claude-code,cursor"],
       { cwd: sourceRoot }
     );
     await runCli(["pack", "init", "frontend", "--name", "acme/frontend", "--version", "1.0.0"], {
@@ -140,26 +140,26 @@ describe("bundle graph resources", () => {
     await runCli(["pack", "add", "frontend", "secret:openai"], { cwd: sourceRoot });
 
     expect(
-      await runCli(["pack", "install", "frontend", "--to", packTarget, "--apply", "--agent", "codex"], {
+      await runCli(["pack", "install", "frontend", "--to", packTarget, "--apply", "--agent", "claude-code"], {
         cwd: sourceRoot
       })
     ).toContain("and applied");
     expect(
-      await runCli(["scope", "sync", "--from", sourceRoot, "--to", syncTarget, "pack:frontend", "--apply", "--agent", "codex"], {
+      await runCli(["scope", "sync", "--from", sourceRoot, "--to", syncTarget, "pack:frontend", "--apply", "--agent", "claude-code"], {
         cwd: root
       })
     ).toContain("and applied");
 
-    expect(await readFile(join(packTarget, ".codex", "subagents", "backend.md"), "utf8")).toContain(
+    expect(await readFile(join(packTarget, ".claude", "agents", "backend.md"), "utf8")).toContain(
       "You own backend."
     );
-    expect(await readFile(join(packTarget, ".codex", "secrets", "openai.json"), "utf8")).toContain(
+    expect(await readFile(join(packTarget, ".claude", "secrets", "openai.json"), "utf8")).toContain(
       "OPENAI_API_KEY"
     );
-    expect(await readFile(join(syncTarget, ".codex", "subagents", "backend.md"), "utf8")).toContain(
+    expect(await readFile(join(syncTarget, ".claude", "agents", "backend.md"), "utf8")).toContain(
       "You own backend."
     );
-    expect(await readFile(join(syncTarget, ".codex", "secrets", "openai.json"), "utf8")).toContain(
+    expect(await readFile(join(syncTarget, ".claude", "secrets", "openai.json"), "utf8")).toContain(
       "OPENAI_API_KEY"
     );
   });
@@ -173,7 +173,7 @@ describe("bundle graph resources", () => {
     await runCli(["scope", "init", "--scope", "project"], { cwd: targetRoot });
 
     await runCli(
-      ["command", "add", "--id", "security-scan", "--content", "echo scan", "--targets", "codex"],
+      ["command", "add", "--id", "security-scan", "--content", "echo scan", "--targets", "claude-code"],
       { cwd: sourceRoot }
     );
     await runCli(["pack", "init", "frontend", "--name", "acme/frontend", "--version", "1.0.0"], {

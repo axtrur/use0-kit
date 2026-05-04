@@ -29,7 +29,7 @@ grep -q "Project baseline testing." CLAUDE.md
 ## 1. Create A Session Scope
 
 ```bash
-use0-kit scope init --scope session --agents codex
+use0-kit scope init --scope session --agents codex,claude-code
 use0-kit scope inspect --scope session
 ```
 
@@ -44,7 +44,7 @@ test -d .use0-kit/session/.use0-kit/sources
 
 ```bash
 use0-kit instruction set-section SessionTesting --body "Session-only testing marker." --targets codex --scope session
-use0-kit command add session-check --content "echo session-only" --targets codex --scope session
+use0-kit command add session-check --content "echo session-only" --targets claude-code --scope session
 ```
 
 Expected:
@@ -58,15 +58,15 @@ use0-kit list --scope project | grep -q "instruction:testing"
 ## 3. Plan And Apply Session Output
 
 ```bash
-use0-kit plan --scope session --agent codex
-use0-kit apply --scope session --agent codex --verify
+use0-kit plan --scope session --agent codex,claude-code
+use0-kit apply --scope session --agent codex,claude-code --verify
 ```
 
 Expected:
 
 ```bash
 test -f .use0-kit/session/AGENTS.md
-test -f .use0-kit/session/.codex/commands/session-check.md
+test -f .use0-kit/session/.claude/commands/session-check.md
 grep -q "Session-only testing marker." .use0-kit/session/AGENTS.md
 grep -q "Project baseline testing." AGENTS.md
 ```
@@ -98,14 +98,14 @@ use0-kit diff --scope session --materialized | grep -q "materialized: clean"
 Promote only the resources that proved useful:
 
 ```bash
-use0-kit scope sync --from session --to project command:session-check --mode fork --apply --agent codex
+use0-kit scope sync --from session --to project command:session-check --mode fork --apply --agent codex,claude-code
 ```
 
 Expected:
 
 ```bash
 use0-kit list --scope project | grep -q "command:session-check"
-test -f .codex/commands/session-check.md
+test -f .claude/commands/session-check.md
 use0-kit doctor
 use0-kit diff --materialized | grep -q "materialized: clean"
 ```

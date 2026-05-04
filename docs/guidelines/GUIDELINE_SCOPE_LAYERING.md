@@ -52,8 +52,8 @@ test -f "$WORKSPACE/.use0-kit/sources/instructions/workspacerules.md"
 
 ```bash
 cd "$PROJECT"
-use0-kit scope init --scope project --agents codex
-use0-kit command add project-check --content "npm test" --targets codex
+use0-kit scope init --scope project --agents codex,claude-code
+use0-kit command add project-check --content "npm test" --targets claude-code
 ```
 
 Expected:
@@ -67,16 +67,16 @@ test -f "$PROJECT/.use0-kit/sources/commands/project-check.md"
 
 ```bash
 use0-kit scope list
-use0-kit list --effective --agent codex | sort
+use0-kit list --effective | sort
 use0-kit scope explain skill:global-review --agent codex
 ```
 
 Expected:
 
 ```bash
-use0-kit list --effective --agent codex | grep -q "skill:global-review"
-use0-kit list --effective --agent codex | grep -q "instruction:workspacerules"
-use0-kit list --effective --agent codex | grep -q "command:project-check"
+use0-kit list --effective | grep -q "skill:global-review"
+use0-kit list --effective | grep -q "instruction:workspacerules"
+use0-kit list --effective | grep -q "command:project-check"
 use0-kit scope explain skill:global-review --agent codex | grep -q "global wins"
 ```
 
@@ -85,7 +85,7 @@ use0-kit scope explain skill:global-review --agent codex | grep -q "global wins"
 Effective visibility is not the same as materialized project output. Materialize a global resource into the project by syncing it explicitly:
 
 ```bash
-use0-kit scope sync --from global --to project skill:global-review --mode pin --apply --agent codex
+use0-kit scope sync --from global --to project skill:global-review --mode pin --apply --agent codex,claude-code
 ```
 
 Expected:

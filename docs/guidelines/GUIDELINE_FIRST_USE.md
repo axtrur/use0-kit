@@ -46,10 +46,10 @@ test -d .use0-kit/store/skills
 ```bash
 use0-kit skill init repo-conventions --targets codex,claude-code
 use0-kit instruction set-section Testing --body "Run npm test and npm run build before PRs." --targets codex,claude-code
-use0-kit command add repo-check --content "npm test && npm run build" --targets codex
+use0-kit command add repo-check --content "npm test && npm run build" --targets claude-code
 use0-kit subagent add reviewer --content "Review code for regressions and missing tests." --targets claude-code
 use0-kit hook add pre-apply --content "echo before-apply" --targets codex
-use0-kit secret add --id openai --env OPENAI_API_KEY --targets codex
+use0-kit secret add --id openai --env OPENAI_API_KEY --targets claude-code
 ```
 
 Expected:
@@ -91,9 +91,9 @@ Expected:
 
 ```bash
 test -f .codex/skills/repo-conventions/SKILL.md
-test -f .codex/commands/repo-check.md
+test -f .claude/commands/repo-check.md
 test -f .claude/skills/repo-conventions/SKILL.md
-test -f .claude/subagents/reviewer.md
+test -f .claude/agents/reviewer.md
 test -f AGENTS.md
 test -f CLAUDE.md
 ```
@@ -102,7 +102,7 @@ test -f CLAUDE.md
 
 ```bash
 use0-kit instruction render --agent codex
-use0-kit command render repo-check --agent codex
+use0-kit command render repo-check --agent claude-code
 use0-kit hook test pre-apply
 use0-kit secret env openai
 ```
