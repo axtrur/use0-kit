@@ -36,11 +36,6 @@ describe("generic add remove", () => {
     );
     await runCli(["pack", "add", "frontend", "command:security-scan"], { cwd: root });
     await runCli(
-      ["add", "profile", "developer", "--name", "Developer"],
-      { cwd: root }
-    );
-    await runCli(["profile", "add", "developer", "pack:frontend"], { cwd: root });
-    await runCli(
       ["add", "plugin", "repo-helper", "path:./plugins/repo-helper", "--targets", "codex"],
       { cwd: root }
     );
@@ -52,18 +47,17 @@ describe("generic add remove", () => {
     expect(listOutput).toContain("subagent:backend");
     expect(listOutput).toContain("hook:pre-apply");
     expect(listOutput).toContain("pack:frontend");
-    expect(listOutput).toContain("profile:developer");
     expect(listOutput).toContain("plugin:repo-helper");
     expect(await runCli(["info", "plugin:repo-helper"], { cwd: root })).toContain("source=path:./plugins/repo-helper");
     expect(await runCli(["edit", "plugin:repo-helper"], { cwd: root })).toBe(join(root, "plugins", "repo-helper"));
     expect(await runCli(["list", "mcp"], { cwd: root })).toBe("mcp:context7");
-    expect(await runCli(["list", "command:security-scan", "profile:developer"], { cwd: root })).toContain(
+    expect(await runCli(["list", "command:security-scan", "pack:frontend"], { cwd: root })).toContain(
       "command:security-scan"
     );
-    expect(await runCli(["list", "command:security-scan", "profile:developer"], { cwd: root })).toContain(
-      "profile:developer"
+    expect(await runCli(["list", "command:security-scan", "pack:frontend"], { cwd: root })).toContain(
+      "pack:frontend"
     );
-    expect(await runCli(["list", "command:security-scan", "profile:developer"], { cwd: root })).not.toContain(
+    expect(await runCli(["list", "command:security-scan", "pack:frontend"], { cwd: root })).not.toContain(
       "mcp:context7"
     );
 
@@ -72,7 +66,6 @@ describe("generic add remove", () => {
     await runCli(["remove", "command:security-scan"], { cwd: root });
     await runCli(["remove", "subagent:backend"], { cwd: root });
     await runCli(["remove", "hook:pre-apply"], { cwd: root });
-    await runCli(["remove", "profile:developer"], { cwd: root });
     await runCli(["remove", "pack:frontend"], { cwd: root });
     await runCli(["remove", "plugin:repo-helper"], { cwd: root });
 
@@ -83,7 +76,6 @@ describe("generic add remove", () => {
     expect(after).not.toContain("subagent:backend");
     expect(after).not.toContain("hook:pre-apply");
     expect(after).not.toContain("pack:frontend");
-    expect(after).not.toContain("profile:developer");
     expect(after).not.toContain("plugin:repo-helper");
   });
 });

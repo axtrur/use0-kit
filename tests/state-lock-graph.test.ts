@@ -31,8 +31,6 @@ describe("state lock and graph", () => {
       cwd: root
     });
     await runCli(["pack", "add", "frontend", "skill:repo-conventions"], { cwd: root });
-    await runCli(["profile", "create", "frontend", "--name", "Frontend"], { cwd: root });
-    await runCli(["profile", "add", "frontend", "pack:frontend"], { cwd: root });
     await runCli(
       ["plugin", "add", "path:./plugins/repo-helper", "--id", "repo-helper", "--targets", "codex"],
       { cwd: root }
@@ -49,8 +47,6 @@ describe("state lock and graph", () => {
     expect(materialized).toContain(".codex/secrets/openai.json");
     expect(materialized).toContain("pack:frontend");
     expect(materialized).toContain(".use0-kit/store/packs/frontend.json");
-    expect(materialized).toContain("profile:frontend");
-    expect(materialized).toContain(".use0-kit/store/profiles/frontend.json");
     expect(materialized).toContain("plugin:repo-helper");
     expect(materialized).toContain(".use0-kit/store/plugins/repo-helper.json");
     expect(state).toContain('"backupId"');

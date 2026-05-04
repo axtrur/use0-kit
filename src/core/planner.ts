@@ -16,7 +16,6 @@ import type {
   MaterializationPlan,
   PackResource,
   PluginResource,
-  ProfileResource,
   SecretResource,
   SkillResource,
   SubagentResource
@@ -105,10 +104,10 @@ function buildSecretActions(root: string, storeRoot: string, secret: SecretResou
 
 function buildDescriptorActions(
   storeRoot: string,
-  kind: "pack" | "profile" | "plugin",
-  resource: PackResource | ProfileResource | PluginResource
+  kind: "pack" | "plugin",
+  resource: PackResource | PluginResource
 ) {
-  const storePath = join(storeRoot, kind === "pack" ? "packs" : kind === "profile" ? "profiles" : "plugins", `${resource.id}.json`);
+  const storePath = join(storeRoot, kind === "pack" ? "packs" : "plugins", `${resource.id}.json`);
   const content =
     JSON.stringify(
       kind === "pack"
@@ -118,17 +117,11 @@ function buildDescriptorActions(
             version: (resource as PackResource).version,
             resources: (resource as PackResource).resources
           }
-        : kind === "profile"
-          ? {
+        : {
             id: resource.id,
-            name: (resource as ProfileResource).name,
-            exports: (resource as ProfileResource).exports
-            }
-          : {
-              id: resource.id,
-              source: (resource as PluginResource).source,
-              targets: (resource as PluginResource).targets
-            },
+            source: (resource as PluginResource).source,
+            targets: (resource as PluginResource).targets
+          },
       null,
       2
     ) + "\n";
@@ -197,9 +190,6 @@ export async function buildPlan(input: {
   ).flat();
   const secretActions = input.manifest.secrets.flatMap((secret) => buildSecretActions(input.root, storeRoot, secret));
   const packActions = input.manifest.packs.flatMap((pack) => buildDescriptorActions(storeRoot, "pack", pack));
-  const profileActions = input.manifest.profiles.flatMap((profile) =>
-    buildDescriptorActions(storeRoot, "profile", profile)
-  );
   const pluginActions = input.manifest.plugins.flatMap((plugin) =>
     buildDescriptorActions(storeRoot, "plugin", plugin)
   );
@@ -252,7 +242,6 @@ export async function buildPlan(input: {
       ...hookActions,
       ...secretActions,
       ...packActions,
-      ...profileActions,
       ...pluginActions,
       ...mcpActions,
       ...instructionActions

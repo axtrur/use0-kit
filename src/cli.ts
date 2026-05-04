@@ -51,7 +51,6 @@ import {
 import { buildPlan } from "./core/planner.js";
 import { diffScopesDetailed, previewSyncScopesDetailed, promoteResource, syncScopesDetailed } from "./core/reconciliation.js";
 import { enforcePolicy } from "./core/policy.js";
-import { syncProfile } from "./core/profiles.js";
 import {
   addRegistry,
   getRegistryInfo,
@@ -75,9 +74,6 @@ import {
   addSkill,
   addSubagent,
   addSecret,
-  addProfileExport,
-  createProfile,
-  exportProfile,
   getSkill,
   getCommand,
   getHook,
@@ -86,23 +82,19 @@ import {
   getPlugin,
   getSecret,
   getSubagent,
-  importProfile,
   initPack,
   loadResourceContent,
   listPacks,
-  listProfiles,
   removeCommand,
   removeHook,
   removeInstruction,
   removeMcpServer,
   removePack,
   removePlugin,
-  removeProfile,
   removeSecret,
   removeSkill,
   removeSubagent,
-  setMcpEnabled,
-  useProfile
+  setMcpEnabled
 } from "./core/resources.js";
 import {
   diffScopes,
@@ -348,7 +340,6 @@ function appendVerboseOutput(
     getAgentFlag(meta.flags) ? `verbose.agents=${getAgentFlag(meta.flags)}` : undefined,
     meta.flags.materialize ? `verbose.materialize=${meta.flags.materialize}` : undefined,
     meta.flags.store ? `verbose.store=${meta.flags.store}` : undefined,
-    meta.flags.profile ? `verbose.profile=${meta.flags.profile}` : undefined,
     meta.flags.registry ? `verbose.registry=${meta.flags.registry}` : undefined,
     meta.flags.offline === "true" ? "verbose.offline=true" : undefined,
     meta.flags.plan === "true" ? "verbose.plan=true" : undefined,
@@ -377,33 +368,26 @@ function applyStoreOverrideToManifest(manifest: Manifest, store?: string): Manif
   };
 }
 
-async function applyInitTemplate(root: string, templateName: string, agents: AgentId[]): Promise<void> {
+async function applyInitPack(root: string, packName: string): Promise<void> {
   const manifest = await loadManifest(root);
 
-  if (templateName === "blank" || templateName === "minimal") {
+  if (packName === "blank" || packName === "minimal") {
     return;
   }
 
-  if (templateName === "frontend") {
+  if (packName === "frontend") {
     manifest.packs = manifest.packs.filter((item) => item.id !== "frontend");
     manifest.packs.push({
       id: "frontend",
-      name: "template/frontend",
+      name: "pack/frontend",
       version: "0.1.0",
       resources: []
-    });
-    manifest.profiles = manifest.profiles.filter((item) => item.id !== "frontend");
-    manifest.profiles.push({
-      id: "frontend",
-      name: "Frontend",
-      exports: ["pack:frontend"],
-      defaultTargets: agents
     });
     await saveManifest(root, manifest);
     return;
   }
 
-  throw new Error(`Unknown template: ${templateName}`);
+  throw new Error(`Unknown init pack: ${packName}`);
 }
 
 function normalizeInstructionId(title: string): string {
@@ -910,9 +894,8 @@ export async function runCli(args: string[], context: CliContext): Promise<strin
       manifest.agents = parseAgentIds(flags.agents);
       await saveManifest(root, manifest);
     }
-    if (flags.template) {
-      const manifest = await loadManifest(root);
-      await applyInitTemplate(root, flags.template, manifest.agents);
+    if (flags.with) {
+      await applyInitPack(root, flags.with);
     }
     return `Initialized ${scope} scope at ${root}`;
   }
@@ -932,9 +915,8 @@ export async function runCli(args: string[], context: CliContext): Promise<strin
       manifest.agents = parseAgentIds(flags.agents);
       await saveManifest(root, manifest);
     }
-    if (flags.template) {
-      const manifest = await loadManifest(root);
-      await applyInitTemplate(root, flags.template, manifest.agents);
+    if (flags.with) {
+      await applyInitPack(root, flags.with);
     }
     return `Initialized ${scope} scope at ${root}`;
   }
@@ -1305,14 +1287,6 @@ export async function runCli(args: string[], context: CliContext): Promise<strin
       }, forceOption(flags));
       return `Added pack:${id}`;
     }
-    if (positionals[0] === "profile") {
-      const id = flags.id ?? positionals[1];
-      await createProfile(root, {
-        id,
-        name: flags.name
-      }, forceOption(flags));
-      return `Added profile:${id}`;
-    }
     if (positionals[0] === "secret") {
       const id = flags.id ?? positionals[1];
       await addSecret(root, {
@@ -1369,10 +1343,6 @@ export async function runCli(args: string[], context: CliContext): Promise<strin
     }
     if (kind === "pack") {
       await removePack(root, id);
-      return `Removed ${selector}`;
-    }
-    if (kind === "profile") {
-      await removeProfile(root, id);
       return `Removed ${selector}`;
     }
     if (kind === "plugin") {
@@ -1974,117 +1944,6 @@ export async function runCli(args: string[], context: CliContext): Promise<strin
     return `Imported pack from ${positionals[0]}`;
   }
 
-  if (command === "profile" && subcommand === "create") {
-    const root = flags.scope ? await scopePath(context.cwd, flags.scope) : context.cwd;
-    await createProfile(root, {
-      id: positionals[0],
-      name: flags.name ?? positionals[0],
-      defaultTargets: parseTargets(flags.targets)
-    }, forceOption(flags));
-    return `Created profile:${positionals[0]}`;
-  }
-
-  if (command === "profile" && subcommand === "add") {
-    const root = flags.scope ? await scopePath(context.cwd, flags.scope) : context.cwd;
-    await addProfileExport(root, positionals[0], positionals[1]);
-    return `Added ${positionals[1]} to profile:${positionals[0]}`;
-  }
-
-  if (command === "profile" && subcommand === "sync") {
-    const root = flags.scope ? await scopePath(context.cwd, flags.scope) : context.cwd;
-    const targetRoot = (await resolveMaybeScopeRoot(context.cwd, flags.to)) ?? context.cwd;
-    ensureInteractiveConflictMode(flags.conflict as string | undefined);
-    if (flags.apply && flags.plan === "true") {
-      return withPreviewRoot(targetRoot, async (previewRoot) => {
-        const count = await syncProfile(root, positionals[0], previewRoot, {
-          mode: flags.mode as "inherit" | "pin" | "copy" | "fork" | "mirror" | undefined,
-          conflict: flags.conflict as
-            | "fail"
-            | "ask"
-            | "skip"
-            | "parent-wins"
-            | "child-wins"
-            | "merge"
-            | undefined
-        });
-        const planned = await applyCurrentManifest(previewRoot, {
-          agentIds: parseAgentIds(getAgentFlag(flags)),
-          verify: flags.verify === "true",
-          backup: flags.backup !== "false",
-          materialization: flags.materialize as "symlink" | "copy" | "auto" | undefined,
-          store: flags.store,
-          plan: true
-        });
-        return formatPlannedWorkflow(`Synced ${count} export(s) from profile:${positionals[0]} to ${targetRoot}`, planned);
-      });
-    }
-    const count = await syncProfile(root, positionals[0], targetRoot, {
-      mode: flags.mode as "inherit" | "pin" | "copy" | "fork" | "mirror" | undefined,
-      conflict: flags.conflict as
-        | "fail"
-        | "ask"
-        | "skip"
-        | "parent-wins"
-        | "child-wins"
-        | "merge"
-        | undefined
-    });
-    if (flags.apply) {
-      const applied = await applyCurrentManifest(targetRoot, {
-        agentIds: parseAgentIds(getAgentFlag(flags)),
-        verify: flags.verify === "true",
-        backup: flags.backup !== "false",
-        materialization: flags.materialize as "symlink" | "copy" | "auto" | undefined,
-        store: flags.store
-      });
-      return `Synced ${count} export(s) from profile:${positionals[0]} to ${targetRoot} and applied ${applied.actions} action(s)`;
-    }
-    return `Synced ${count} export(s) from profile:${positionals[0]} to ${targetRoot}`;
-  }
-
-  if (command === "profile" && subcommand === "list") {
-    const root = flags.scope ? await scopePath(context.cwd, flags.scope) : context.cwd;
-    return (await listProfiles(root)).map((item) => item.id).join("\n");
-  }
-
-  if (command === "profile" && subcommand === "remove") {
-    const root = flags.scope ? await scopePath(context.cwd, flags.scope) : context.cwd;
-    await removeProfile(root, positionals[0]);
-    return `Removed profile:${positionals[0]}`;
-  }
-
-  if (command === "profile" && subcommand === "export") {
-    const root = flags.scope ? await scopePath(context.cwd, flags.scope) : context.cwd;
-    await exportProfile(root, positionals[0], flags.out);
-    return `Exported profile:${positionals[0]} to ${flags.out}`;
-  }
-
-  if (command === "profile" && subcommand === "import") {
-    const root = flags.scope ? await scopePath(context.cwd, flags.scope) : context.cwd;
-    await importProfile(root, positionals[0]);
-    return `Imported profile from ${positionals[0]}`;
-  }
-
-  if (command === "profile" && subcommand === "use") {
-    const root = flags.scope ? await scopePath(context.cwd, flags.scope) : context.cwd;
-    const manifest = await loadManifest(root);
-    if (!manifest.profiles.some((item) => item.id === positionals[0])) {
-      const roots = await activeScopeRoots(root);
-      const globalRoot = roots.global;
-      if (globalRoot && globalRoot !== root) {
-        const globalManifest = await loadManifest(globalRoot).catch(() => null);
-        if (globalManifest?.profiles.some((item) => item.id === positionals[0])) {
-          await syncProfile(globalRoot, positionals[0], root, {
-            mode: "inherit",
-            conflict: await defaultConflictMode(root)
-          });
-        }
-      }
-    }
-    await useProfile(root, positionals[0]);
-    return `Using profile:${positionals[0]}`;
-  }
-
   if (command === "approval" && subcommand === "add") {
     const root = flags.scope ? await scopePath(context.cwd, flags.scope) : context.cwd;
     const selector = positionals[0];
@@ -2367,7 +2226,6 @@ export async function runCli(args: string[], context: CliContext): Promise<strin
       item.targets?.length ? `targets=${item.targets.join(",")}` : undefined,
       item.version ? `version=${item.version}` : undefined,
       item.resources?.length ? `resources=${item.resources.join(",")}` : undefined,
-      item.exports?.length ? `exports=${item.exports.join(",")}` : undefined,
       item.signature?.keyId ? `signature.key_id=${item.signature.keyId}` : undefined,
       item.signature?.digest ? `signature.digest=${item.signature.digest}` : undefined,
       item.env ? `env=${item.env}` : undefined,
@@ -2498,52 +2356,6 @@ export async function runCli(args: string[], context: CliContext): Promise<strin
     if (!flags.from && !flags.to) {
       const root = flags.scope ? await scopePath(context.cwd, flags.scope) : await scopePath(context.cwd);
       await updateResources(root, []);
-      if (flags.profile) {
-        const roots = await activeScopeRoots(root);
-        const globalRoot = roots.global;
-        if (!globalRoot) {
-          throw new Error("No global scope available for --profile sync");
-        }
-        if (flags.plan === "true") {
-          return withPreviewRoot(root, async (previewRoot) => {
-            const count = await syncProfile(globalRoot, flags.profile, previewRoot, {
-              mode: flags.mode as "inherit" | "pin" | "copy" | "fork" | "mirror" | undefined,
-              conflict: await defaultConflictMode(root)
-            });
-            const planned = await applyCurrentManifest(previewRoot, {
-              agentIds: parseAgentIds(getAgentFlag(flags)),
-              verify: flags.verify !== "false",
-              backup: flags.backup !== "false",
-              materialization: flags.materialize as "symlink" | "copy" | "auto" | undefined,
-              store: flags.store,
-              plan: true
-            });
-            return appendVerboseOutput(formatPlannedWorkflow(`Synced ${count} resource(s) from profile:${flags.profile}`, planned), {
-              command,
-              root,
-              flags,
-              positionals
-            });
-          });
-        }
-        const count = await syncProfile(globalRoot, flags.profile, root, {
-          mode: flags.mode as "inherit" | "pin" | "copy" | "fork" | "mirror" | undefined,
-          conflict: await defaultConflictMode(root)
-        });
-        const applied = await applyCurrentManifest(root, {
-          agentIds: parseAgentIds(getAgentFlag(flags)),
-          verify: flags.verify !== "false",
-          backup: flags.backup !== "false",
-          materialization: flags.materialize as "symlink" | "copy" | "auto" | undefined,
-          store: flags.store
-        });
-        return appendVerboseOutput(`Synced ${count} resource(s) from profile:${flags.profile} and applied ${applied.actions} action(s)`, {
-          command,
-          root,
-          flags,
-          positionals
-        });
-      }
       if (flags.plan === "true") {
         return withPreviewRoot(root, async (previewRoot) => {
           const count = await syncDeclaredParents(previewRoot);

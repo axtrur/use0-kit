@@ -141,8 +141,8 @@ describe("mcp server mode", () => {
         ["skill", "add", "--id", "global-skill", "--source", `path:${skillDir}`, "--targets", "codex"],
         { cwd: globalRoot }
       );
-      await runCli(["profile", "create", "frontend", "--name", "Frontend"], { cwd: globalRoot });
-      await runCli(["profile", "add", "frontend", "skill:global-skill"], { cwd: globalRoot });
+      await runCli(["pack", "init", "frontend", "--name", "pack/frontend"], { cwd: globalRoot });
+      await runCli(["pack", "add", "frontend", "skill:global-skill"], { cwd: globalRoot });
       await writeFile(
         join(projectRoot, "use0-kit.toml"),
         [
@@ -153,7 +153,7 @@ describe("mcp server mode", () => {
           'level = "project"',
           'mode = "project"',
           'canonical_store = ".use0-kit/store"',
-          'parents = [{ scope = "global", profile = "frontend", mode = "pin" }]',
+          'parents = [{ scope = "global", selector = "pack:frontend", mode = "pin" }]',
           '',
           '[agents]',
           'enabled = ["codex"]',

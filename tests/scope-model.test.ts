@@ -79,7 +79,7 @@ describe("scope model", () => {
     }
   });
 
-  test("supports manifest-declared scope parents with profile-based sync", async () => {
+  test("supports manifest-declared scope parents with pack selector sync", async () => {
     const prevConfig = process.env.XDG_CONFIG_HOME;
     const prevData = process.env.XDG_DATA_HOME;
     const prevState = process.env.XDG_STATE_HOME;
@@ -106,15 +106,15 @@ describe("scope model", () => {
         ["skill", "add", "--id", "global-skill", "--source", `path:${skillDir}`, "--targets", "codex"],
         { cwd: globalRoot }
       );
-      await runCli(["profile", "create", "frontend", "--scope", "global", "--name", "Frontend"], { cwd: root });
-      await runCli(["profile", "add", "frontend", "skill:global-skill", "--scope", "global"], { cwd: root });
+      await runCli(["pack", "init", "frontend", "--scope", "global", "--name", "pack/frontend"], { cwd: root });
+      await runCli(["pack", "add", "frontend", "skill:global-skill", "--scope", "global"], { cwd: root });
 
       const manifestPath = join(projectRoot, "use0-kit.toml");
       const manifest = await readFile(manifestPath, "utf8");
       await writeFile(
         manifestPath,
         manifest +
-          '\n[scope]\nmode = "project"\nparents = [{ scope = "global", profile = "frontend", mode = "pin" }]\n',
+          '\n[scope]\nmode = "project"\nparents = [{ scope = "global", selector = "pack:frontend", mode = "pin" }]\n',
         "utf8"
       );
 
@@ -122,12 +122,13 @@ describe("scope model", () => {
         "Synced 2 resource(s) from declared parents"
       );
       const synced = await readFile(manifestPath, "utf8");
-      expect(synced).toContain('[[profiles]]');
+      expect(synced).not.toContain('[[profiles]]');
+      expect(synced).toContain('[[packs]]');
       expect(synced).toContain('id = "frontend"');
       expect(synced).toContain('[[skills]]');
       expect(synced).toContain('id = "global-skill"');
       expect(await runCli(["scope", "explain", "skill:global-skill"], { cwd: projectRoot })).toContain(
-        "profile frontend"
+        "pack frontend"
       );
     } finally {
       if (prevConfig === undefined) delete process.env.XDG_CONFIG_HOME;
@@ -224,7 +225,7 @@ describe("scope model", () => {
         'level = "project"',
         'mode = "project"',
         'canonical_store = ".use0-kit/store"',
-        'parents = [{ scope = "user", mode = "inherit" }, { scope = "global", profile = "frontend", mode = "pin" }]',
+        'parents = [{ scope = "user", mode = "inherit" }, { scope = "global", selector = "pack:frontend", mode = "pin" }]',
         ""
       ].join("\n"),
       "utf8"
@@ -233,16 +234,16 @@ describe("scope model", () => {
     const detailed = await runCli(["scope", "inspect", "--scope", "project"], { cwd: root });
     expect(detailed).toContain("parents=2");
     expect(detailed).toContain("parent[0]=scope:user,mode:inherit");
-    expect(detailed).toContain("parent[1]=scope:global,profile:frontend,mode:pin");
+    expect(detailed).toContain("parent[1]=scope:global,selector:pack:frontend,mode:pin");
 
     const json = JSON.parse(await runCli(["scope", "inspect", "--scope", "project", "--json"], { cwd: root })) as {
       parents: number;
-      parentEntries: Array<{ scope: string; profile?: string; mode?: string }>;
+      parentEntries: Array<{ scope: string; selector?: string; mode?: string }>;
     };
     expect(json.parents).toBe(2);
     expect(json.parentEntries).toEqual([
       { scope: "user", mode: "inherit" },
-      { scope: "global", profile: "frontend", mode: "pin" }
+      { scope: "global", selector: "pack:frontend", mode: "pin" }
     ]);
   });
 });

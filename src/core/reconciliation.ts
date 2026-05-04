@@ -12,7 +12,6 @@ import type {
   McpResource,
   PackResource,
   PluginResource,
-  ProfileResource,
   SecretResource,
   SkillResource,
   SubagentResource
@@ -81,10 +80,6 @@ function comparableResource(selector: string, resource: unknown): unknown {
     const value = resource as PackResource;
     return { id: value.id, name: value.name, version: value.version, resources: value.resources };
   }
-  if (kind === "profile") {
-    const value = resource as ProfileResource;
-    return { id: value.id, name: value.name, exports: value.exports };
-  }
   if (kind === "plugin") {
     const value = resource as PluginResource;
     return { id: value.id, source: value.source, targets: value.targets };
@@ -102,7 +97,6 @@ function removeSelectorFromManifest(target: Awaited<ReturnType<typeof loadManife
   else if (kind === "hook") target.hooks = target.hooks.filter((item) => item.id !== id);
   else if (kind === "subagent") target.subagents = target.subagents.filter((item) => item.id !== id);
   else if (kind === "pack") target.packs = target.packs.filter((item) => item.id !== id);
-  else if (kind === "profile") target.profiles = target.profiles.filter((item) => item.id !== id);
   else if (kind === "secret") target.secrets = target.secrets.filter((item) => item.id !== id);
   else if (kind === "plugin") target.plugins = target.plugins.filter((item) => item.id !== id);
 }
@@ -156,7 +150,7 @@ export async function syncScopesDetailed(input: {
   fromRoot: string;
   toRoot: string;
   selector?: string;
-  originProfile?: string;
+  originPack?: string;
   mode?: "inherit" | "pin" | "copy" | "fork" | "mirror";
   prune?: boolean;
   conflict?: "fail" | "ask" | "skip" | "parent-wins" | "child-wins" | "merge";
@@ -167,7 +161,7 @@ export async function syncScopesDetailed(input: {
   const source = await loadManifest(input.fromRoot);
   const target = await loadManifest(input.toRoot);
   const originScope = source.scope?.level ?? source.defaultScope;
-  const originProfile = input.originProfile;
+  const originPack = input.originPack ?? (input.selector?.startsWith("pack:") ? input.selector.slice("pack:".length) : undefined);
   const mode = input.mode ?? "inherit";
   const conflict = input.conflict ?? "fail";
   const selector = input.selector;
@@ -175,7 +169,6 @@ export async function syncScopesDetailed(input: {
   const matchesSelector = (value: string) =>
     !selector || expandedSelectors.has(value);
   const selectedPacks = source.packs.filter((pack) => matchesSelector(`pack:${pack.id}`));
-  const selectedProfiles = source.profiles.filter((profile) => matchesSelector(`profile:${profile.id}`));
   const selectedSkills = source.skills.filter(
     (skill) => matchesSelector(`skill:${skill.id}`)
   );
@@ -217,7 +210,6 @@ export async function syncScopesDetailed(input: {
       target.hooks = [];
       target.subagents = [];
       target.packs = [];
-      target.profiles = [];
       target.secrets = [];
       target.plugins = [];
     }
@@ -244,7 +236,7 @@ export async function syncScopesDetailed(input: {
     if (!(await resolveSkillConflict(skill))) {
       continue;
     }
-    const next: SkillResource = { ...skill, originScope, originProfile, syncMode: mode };
+    const next: SkillResource = { ...skill, originScope, originPack, syncMode: mode };
 
     if (mode === "pin") {
       next.pinnedDigest = digestResource({
@@ -287,7 +279,7 @@ export async function syncScopesDetailed(input: {
     const next: InstructionResource = {
       ...instruction,
       originScope,
-      originProfile,
+      originPack,
       syncMode: mode
     };
     if (mode === "pin") {
@@ -324,7 +316,7 @@ export async function syncScopesDetailed(input: {
     const next: CommandResource = {
       ...command,
       originScope,
-      originProfile,
+      originPack,
       syncMode: mode
     };
     if (mode === "pin") {
@@ -349,7 +341,7 @@ export async function syncScopesDetailed(input: {
     const next: HookResource = {
       ...hook,
       originScope,
-      originProfile,
+      originPack,
       syncMode: mode
     };
     if (mode === "pin") {
@@ -367,7 +359,7 @@ export async function syncScopesDetailed(input: {
     const next = {
       ...subagent,
       originScope,
-      originProfile,
+      originPack,
       syncMode: mode
     };
     if (mode === "pin") {
@@ -389,7 +381,7 @@ export async function syncScopesDetailed(input: {
   }
 
   for (const pack of selectedPacks) {
-    const next: PackResource = { ...pack, originScope, originProfile, syncMode: mode };
+    const next: PackResource = { ...pack, originScope, originPack, syncMode: mode };
     if (mode === "pin") {
       next.pinnedDigest = digestResource({
         id: pack.id,
@@ -402,26 +394,13 @@ export async function syncScopesDetailed(input: {
     target.packs.push(next);
   }
 
-  for (const profile of selectedProfiles) {
-    const next: ProfileResource = { ...profile, originScope, originProfile, syncMode: mode };
-    if (mode === "pin") {
-      next.pinnedDigest = digestResource({
-        id: profile.id,
-        name: profile.name,
-        exports: profile.exports
-      });
-    }
-    target.profiles = target.profiles.filter((item) => item.id !== profile.id);
-    target.profiles.push(next);
-  }
-
   for (const secret of selectedSecrets) {
     target.secrets = target.secrets.filter((item) => item.id !== secret.id);
     target.secrets.push({ ...secret });
   }
 
   for (const plugin of selectedPlugins) {
-    const next: PluginResource = { ...plugin, originScope, originProfile, syncMode: mode };
+    const next: PluginResource = { ...plugin, originScope, originPack, syncMode: mode };
     if (mode === "pin") {
       next.pinnedDigest = digestResource({
         id: plugin.id,
@@ -442,7 +421,6 @@ export async function syncScopesDetailed(input: {
     selectedHooks.length +
     selectedSubagents.length +
     selectedPacks.length +
-    selectedProfiles.length +
     selectedSecrets.length +
     selectedPlugins.length
   );

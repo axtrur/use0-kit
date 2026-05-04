@@ -49,7 +49,7 @@ describe("bundle graph resources", () => {
     expect(manifest).toContain('id = "openai"');
   });
 
-  test("pack and profile participate in explain and lock state", async () => {
+  test("pack participates in explain and lock state", async () => {
     const root = await mkdtemp(join(tmpdir(), "use0-kit-pack-lock-"));
     const skillDir = join(root, "skills", "web-design");
 
@@ -65,35 +65,28 @@ describe("bundle graph resources", () => {
       cwd: root
     });
     await runCli(["pack", "add", "frontend", "skill:web-design"], { cwd: root });
-    await runCli(["profile", "create", "frontend", "--name", "Frontend"], { cwd: root });
-    await runCli(["profile", "add", "frontend", "skill:web-design"], { cwd: root });
 
     expect(await runCli(["scope", "explain", "pack:frontend"], { cwd: root })).toContain(
-      "result: project wins"
-    );
-    expect(await runCli(["scope", "explain", "profile:frontend"], { cwd: root })).toContain(
       "result: project wins"
     );
 
     await runCli(["lock", "refresh"], { cwd: root });
     const lock = await readFile(join(root, "use0-kit.lock.json"), "utf8");
     expect(lock).toContain('"pack:frontend"');
-    expect(lock).toContain('"profile:frontend"');
 
     const plan = await runCli(["plan"], { cwd: root });
     expect(plan).toContain("WRITE  pack pack:frontend");
-    expect(plan).toContain("WRITE  profile profile:frontend");
   });
 
-  test("pack install and profile sync reuse the same graph expansion for bundled resources", async () => {
+  test("pack install and scope sync reuse the same graph expansion for bundled resources", async () => {
     const root = await mkdtemp(join(tmpdir(), "use0-kit-graph-unify-"));
     const sourceRoot = join(root, "source");
     const packTarget = join(root, "pack-target");
-    const profileTarget = join(root, "profile-target");
+    const syncTarget = join(root, "sync-target");
 
     await runCli(["scope", "init", "--scope", "project"], { cwd: sourceRoot });
     await runCli(["scope", "init", "--scope", "project"], { cwd: packTarget });
-    await runCli(["scope", "init", "--scope", "project"], { cwd: profileTarget });
+    await runCli(["scope", "init", "--scope", "project"], { cwd: syncTarget });
 
     await runCli(
       ["subagent", "add", "--id", "backend", "--content", "You own backend.", "--targets", "codex"],
@@ -108,31 +101,29 @@ describe("bundle graph resources", () => {
     });
     await runCli(["pack", "add", "frontend", "subagent:backend"], { cwd: sourceRoot });
     await runCli(["pack", "add", "frontend", "secret:openai"], { cwd: sourceRoot });
-    await runCli(["profile", "create", "frontend", "--name", "Frontend"], { cwd: sourceRoot });
-    await runCli(["profile", "add", "frontend", "pack:frontend"], { cwd: sourceRoot });
 
     await runCli(["pack", "install", "frontend", "--to", packTarget], { cwd: sourceRoot });
-    await runCli(["profile", "sync", "frontend", "--to", profileTarget], { cwd: sourceRoot });
+    await runCli(["scope", "sync", "--from", sourceRoot, "--to", syncTarget, "pack:frontend"], { cwd: root });
 
     const packManifest = await readFile(join(packTarget, "use0-kit.toml"), "utf8");
-    const profileManifest = await readFile(join(profileTarget, "use0-kit.toml"), "utf8");
+    const syncManifest = await readFile(join(syncTarget, "use0-kit.toml"), "utf8");
     expect(packManifest).toContain('[[subagents]]');
     expect(packManifest).toContain('[[secrets]]');
-    expect(profileManifest).toContain('[[profiles]]');
-    expect(profileManifest).toContain('[[packs]]');
-    expect(profileManifest).toContain('[[subagents]]');
-    expect(profileManifest).toContain('[[secrets]]');
+    expect(syncManifest).not.toContain('[[profiles]]');
+    expect(syncManifest).toContain('[[packs]]');
+    expect(syncManifest).toContain('[[subagents]]');
+    expect(syncManifest).toContain('[[secrets]]');
   });
 
-  test("pack install --apply and profile sync --apply materialize bundled resources", async () => {
+  test("pack install --apply and scope sync --apply materialize bundled resources", async () => {
     const root = await mkdtemp(join(tmpdir(), "use0-kit-graph-apply-"));
     const sourceRoot = join(root, "source");
     const packTarget = join(root, "pack-target");
-    const profileTarget = join(root, "profile-target");
+    const syncTarget = join(root, "sync-target");
 
     await runCli(["scope", "init", "--scope", "project"], { cwd: sourceRoot });
     await runCli(["scope", "init", "--scope", "project"], { cwd: packTarget });
-    await runCli(["scope", "init", "--scope", "project"], { cwd: profileTarget });
+    await runCli(["scope", "init", "--scope", "project"], { cwd: syncTarget });
 
     await runCli(
       ["subagent", "add", "--id", "backend", "--content", "You own backend.", "--targets", "codex,cursor"],
@@ -147,8 +138,6 @@ describe("bundle graph resources", () => {
     });
     await runCli(["pack", "add", "frontend", "subagent:backend"], { cwd: sourceRoot });
     await runCli(["pack", "add", "frontend", "secret:openai"], { cwd: sourceRoot });
-    await runCli(["profile", "create", "frontend", "--name", "Frontend"], { cwd: sourceRoot });
-    await runCli(["profile", "add", "frontend", "pack:frontend"], { cwd: sourceRoot });
 
     expect(
       await runCli(["pack", "install", "frontend", "--to", packTarget, "--apply", "--agent", "codex"], {
@@ -156,8 +145,8 @@ describe("bundle graph resources", () => {
       })
     ).toContain("and applied");
     expect(
-      await runCli(["profile", "sync", "frontend", "--to", profileTarget, "--apply", "--agent", "codex"], {
-        cwd: sourceRoot
+      await runCli(["scope", "sync", "--from", sourceRoot, "--to", syncTarget, "pack:frontend", "--apply", "--agent", "codex"], {
+        cwd: root
       })
     ).toContain("and applied");
 
@@ -167,16 +156,16 @@ describe("bundle graph resources", () => {
     expect(await readFile(join(packTarget, ".codex", "secrets", "openai.json"), "utf8")).toContain(
       "OPENAI_API_KEY"
     );
-    expect(await readFile(join(profileTarget, ".codex", "subagents", "backend.md"), "utf8")).toContain(
+    expect(await readFile(join(syncTarget, ".codex", "subagents", "backend.md"), "utf8")).toContain(
       "You own backend."
     );
-    expect(await readFile(join(profileTarget, ".codex", "secrets", "openai.json"), "utf8")).toContain(
+    expect(await readFile(join(syncTarget, ".codex", "secrets", "openai.json"), "utf8")).toContain(
       "OPENAI_API_KEY"
     );
   });
 
-  test("profile sync honors reconciliation mode for bundled resources", async () => {
-    const root = await mkdtemp(join(tmpdir(), "use0-kit-profile-sync-mode-"));
+  test("pack scope sync honors reconciliation mode for bundled resources", async () => {
+    const root = await mkdtemp(join(tmpdir(), "use0-kit-pack-sync-mode-"));
     const sourceRoot = join(root, "source");
     const targetRoot = join(root, "target");
 
@@ -191,10 +180,8 @@ describe("bundle graph resources", () => {
       cwd: sourceRoot
     });
     await runCli(["pack", "add", "frontend", "command:security-scan"], { cwd: sourceRoot });
-    await runCli(["profile", "create", "frontend", "--name", "Frontend"], { cwd: sourceRoot });
-    await runCli(["profile", "add", "frontend", "pack:frontend"], { cwd: sourceRoot });
 
-    expect(await runCli(["profile", "sync", "frontend", "--to", targetRoot, "--mode", "pin"], { cwd: sourceRoot })).toContain(
+    expect(await runCli(["scope", "sync", "--from", sourceRoot, "--to", targetRoot, "pack:frontend", "--mode", "pin"], { cwd: root })).toContain(
       "Synced"
     );
 

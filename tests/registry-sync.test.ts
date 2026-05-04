@@ -753,7 +753,7 @@ describe("registry sync", () => {
     }
   });
 
-  test("installs profile bundles from registry recursively before apply", async () => {
+  test("rejects profile bundles from registries because pack is the only bundle model", async () => {
     const root = await mkdtemp(join(tmpdir(), "use0-kit-registry-profile-"));
     const server = createServer((req, res) => {
       if (req.url === "/registry.json") {
@@ -812,19 +812,11 @@ describe("registry sync", () => {
       await runCli(["registry", "add", "official", `http://127.0.0.1:${address.port}/registry.json`], { cwd: root });
       await runCli(["registry", "sync", "official"], { cwd: root });
 
-      expect(
-        await runCli(["registry", "install", "profile:developer", "--registry", "official", "--apply", "--agent", "codex"], {
+      await expect(
+        runCli(["registry", "install", "profile:developer", "--registry", "official", "--apply", "--agent", "codex"], {
           cwd: root
         })
-      ).toContain("and applied");
-
-      const listed = await runCli(["list", "profile:developer", "pack:frontend", "skill:web-design"], { cwd: root });
-      expect(listed).toContain("profile:developer");
-      expect(listed).toContain("pack:frontend");
-      expect(listed).toContain("skill:web-design");
-      expect(await readFile(join(root, ".codex", "skills", "web-design", "SKILL.md"), "utf8")).toContain(
-        "Web Design Skill"
-      );
+      ).rejects.toThrow("Unsupported registry install kind: profile");
     } finally {
       server.close();
     }

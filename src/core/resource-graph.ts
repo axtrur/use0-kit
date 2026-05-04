@@ -6,7 +6,6 @@ import type {
   McpResource,
   PackResource,
   PluginResource,
-  ProfileResource,
   SecretResource,
   SkillResource,
   SubagentResource
@@ -20,7 +19,6 @@ export type SelectorResource =
   | SubagentResource
   | HookResource
   | PackResource
-  | ProfileResource
   | SecretResource
   | PluginResource;
 
@@ -33,7 +31,6 @@ export function listSelectors(manifest: Manifest): string[] {
     ...manifest.subagents.map((item) => `subagent:${item.id}`),
     ...manifest.hooks.map((item) => `hook:${item.id}`),
     ...manifest.packs.map((item) => `pack:${item.id}`),
-    ...manifest.profiles.map((item) => `profile:${item.id}`),
     ...manifest.secrets.map((item) => `secret:${item.id}`),
     ...manifest.plugins.map((item) => `plugin:${item.id}`)
   ];
@@ -48,7 +45,6 @@ export function findBySelector(manifest: Manifest, selector: string): SelectorRe
   if (kind === "subagent") return manifest.subagents.find((item) => item.id === id);
   if (kind === "hook") return manifest.hooks.find((item) => item.id === id);
   if (kind === "pack") return manifest.packs.find((item) => item.id === id);
-  if (kind === "profile") return manifest.profiles.find((item) => item.id === id);
   if (kind === "secret") return manifest.secrets.find((item) => item.id === id);
   if (kind === "plugin") return manifest.plugins.find((item) => item.id === id);
   return undefined;
@@ -72,11 +68,6 @@ export function expandSelectors(manifest: Manifest, selectors: string[]): string
     }
     if (kind === "pack") {
       for (const child of (resource as PackResource).resources) {
-        visit(child);
-      }
-    }
-    if (kind === "profile") {
-      for (const child of (resource as ProfileResource).exports) {
         visit(child);
       }
     }
@@ -126,11 +117,6 @@ export function applySelectorToManifest(target: Manifest, selector: string, reso
     target.packs.push(resource as PackResource);
     return true;
   }
-  if (kind === "profile") {
-    target.profiles = target.profiles.filter((item) => item.id !== id);
-    target.profiles.push(resource as ProfileResource);
-    return true;
-  }
   if (kind === "secret") {
     target.secrets = target.secrets.filter((item) => item.id !== id);
     target.secrets.push(resource as SecretResource);
@@ -146,8 +132,8 @@ export function applySelectorToManifest(target: Manifest, selector: string, reso
 
 export function summarizeSelectorResource(selector: string, resource: SelectorResource): string {
   const originSuffix =
-    "originProfile" in resource && resource.originProfile
-      ? ` inherited from profile ${resource.originProfile}`
+    "originPack" in resource && resource.originPack
+      ? ` inherited from pack ${resource.originPack}`
       : "";
   const [kind] = selector.split(":");
   if (kind === "skill") {
@@ -178,10 +164,6 @@ export function summarizeSelectorResource(selector: string, resource: SelectorRe
     const value = resource as PackResource;
     return `${value.name}@${value.version} ${value.resources.join(",")}${originSuffix}`;
   }
-  if (kind === "profile") {
-    const value = resource as ProfileResource;
-    return `${value.name} ${value.exports.join(",")}${value.defaultTargets?.length ? ` targets=${value.defaultTargets.join(",")}` : ""}${originSuffix}`;
-  }
   if (kind === "plugin") {
     const value = resource as PluginResource;
     return `${value.source}${value.syncMode ? ` ${value.syncMode}` : ""}${originSuffix}`;
@@ -203,7 +185,7 @@ export function describeSelectorResource(selector: string, resource: SelectorRes
     "originScope" in resource
       ? [
           resource.originScope ? `origin_scope=${resource.originScope}` : "",
-          "originProfile" in resource && resource.originProfile ? `origin_profile=${resource.originProfile}` : "",
+          "originPack" in resource && resource.originPack ? `origin_pack=${resource.originPack}` : "",
           "syncMode" in resource && resource.syncMode ? `scope_mode=${resource.syncMode}` : ""
         ].filter(Boolean)
       : [];
@@ -235,10 +217,6 @@ export function describeSelectorResource(selector: string, resource: SelectorRes
   if (kind === "pack") {
     const value = resource as PackResource;
     return `${selector}\nname=${value.name}\nversion=${value.version}\nresources=${value.resources.join(",")}${originLines.length ? `\n${originLines.join("\n")}` : ""}${value.signature ? `\nsignature.key_id=${value.signature.keyId}\nsignature.digest=${value.signature.digest}` : ""}${provenanceLines.length ? `\n${provenanceLines.join("\n")}` : ""}`;
-  }
-  if (kind === "profile") {
-    const value = resource as ProfileResource;
-    return `${selector}\nname=${value.name}\nexports=${value.exports.join(",")}${value.defaultTargets?.length ? `\ndefault_targets=${value.defaultTargets.join(",")}` : ""}${originLines.length ? `\n${originLines.join("\n")}` : ""}${provenanceLines.length ? `\n${provenanceLines.join("\n")}` : ""}`;
   }
   if (kind === "plugin") {
     const value = resource as PluginResource;

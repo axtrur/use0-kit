@@ -20,19 +20,18 @@ describe("CLI completeness helpers", () => {
     expect(manifest).toContain('enabled = ["codex", "cursor"]');
   });
 
-  test("supports init --template frontend by scaffolding starter pack/profile resources", async () => {
+  test("supports init --with frontend by consuming a starter pack without profiles", async () => {
     const root = await mkdtemp(join(tmpdir(), "use0-kit-top-init-template-"));
 
-    expect(await runCli(["init", "--scope", "project", "--template", "frontend", "--agents", "codex,cursor"], { cwd: root })).toContain(
+    expect(await runCli(["init", "--scope", "project", "--with", "frontend", "--agents", "codex,cursor"], { cwd: root })).toContain(
       "Initialized project scope"
     );
     const manifest = await readFile(join(root, "use0-kit.toml"), "utf8");
     expect(manifest).toContain('[[packs]]');
     expect(manifest).toContain('id = "frontend"');
-    expect(manifest).toContain('name = "template/frontend"');
-    expect(manifest).toContain('[[profiles]]');
-    expect(manifest).toContain('exports = ["pack:frontend"]');
-    expect(manifest).toContain('default_targets = ["codex", "cursor"]');
+    expect(manifest).toContain('name = "pack/frontend"');
+    expect(manifest).not.toContain('[[profiles]]');
+    expect(manifest).not.toContain("default_targets");
   });
 
   test("supports init --yes by generating recommended project gitignore entries", async () => {
@@ -68,16 +67,15 @@ describe("CLI completeness helpers", () => {
     expect(manifest).not.toContain('"opencode"');
   });
 
-  test("supports scope init --template frontend", async () => {
+  test("supports scope init --with frontend", async () => {
     const root = await mkdtemp(join(tmpdir(), "use0-kit-scope-init-template-"));
 
-    expect(await runCli(["scope", "init", "--scope", "project", "--template", "frontend"], { cwd: root })).toContain(
+    expect(await runCli(["scope", "init", "--scope", "project", "--with", "frontend"], { cwd: root })).toContain(
       "Initialized project scope"
     );
     const manifest = await readFile(join(root, "use0-kit.toml"), "utf8");
     expect(manifest).toContain('[[packs]]');
-    expect(manifest).toContain('[[profiles]]');
-    expect(manifest).toContain('exports = ["pack:frontend"]');
+    expect(manifest).not.toContain('[[profiles]]');
   });
 
   test("supports command/subagent list-remove, backup list, and skill validate-score", async () => {
@@ -393,7 +391,7 @@ describe("CLI completeness helpers", () => {
     );
   });
 
-  test("supports scoped profile lifecycle against global profile libraries", async () => {
+  test("supports scoped pack lifecycle against global pack libraries", async () => {
     const root = await mkdtemp(join(tmpdir(), "use0-kit-profile-scope-"));
     const xdgConfig = join(root, "xdg-config");
     const xdgData = join(root, "xdg-data");
@@ -410,26 +408,22 @@ describe("CLI completeness helpers", () => {
       const globalRoot = join(xdgData, "use0-kit", "global");
       const skillDir = join(globalRoot, "skills", "global-skill");
       await mkdir(skillDir, { recursive: true });
-      await writeFile(join(skillDir, "SKILL.md"), "# Global Skill\n\nFrom global profile library.\n", "utf8");
+      await writeFile(join(skillDir, "SKILL.md"), "# Global Skill\n\nFrom global pack library.\n", "utf8");
       await runCli(
         ["skill", "add", "--id", "global-skill", "--source", `path:${skillDir}`, "--targets", "codex"],
         { cwd: globalRoot }
       );
 
-      expect(await runCli(["profile", "create", "frontend", "--scope", "global", "--name", "Frontend"], { cwd: root })).toContain(
-        "Created profile:frontend"
+      expect(await runCli(["pack", "init", "frontend", "--scope", "global", "--name", "pack/frontend"], { cwd: root })).toContain(
+        "Initialized pack:frontend"
       );
-      expect(await runCli(["profile", "add", "frontend", "skill:global-skill", "--scope", "global"], { cwd: root })).toContain(
-        "Added skill:global-skill to profile:frontend"
+      expect(await runCli(["pack", "add", "frontend", "skill:global-skill", "--scope", "global"], { cwd: root })).toContain(
+        "Added skill:global-skill to pack:frontend"
       );
-      expect(await runCli(["profile", "list", "--scope", "global"], { cwd: root })).toContain("frontend");
-      expect(await runCli(["profile", "use", "frontend", "--scope", "global"], { cwd: root })).toContain(
-        "Using profile:frontend"
-      );
-      expect(await readFile(join(globalRoot, ".use0-kit", "state.json"), "utf8")).toContain('"activeProfile": "frontend"');
+      expect(await runCli(["pack", "list", "--scope", "global"], { cwd: root })).toContain("frontend");
 
       expect(
-        await runCli(["profile", "sync", "frontend", "--scope", "global", "--to", targetRoot, "--apply", "--agent", "codex"], {
+        await runCli(["pack", "install", "frontend", "--scope", "global", "--to", targetRoot, "--apply", "--agent", "codex"], {
           cwd: root
         })
       ).toContain("and applied");
@@ -445,7 +439,7 @@ describe("CLI completeness helpers", () => {
     }
   });
 
-  test("supports profile sync with scope-name target roots", async () => {
+  test("supports pack install with scope-name target roots", async () => {
     const root = await mkdtemp(join(tmpdir(), "use0-kit-profile-sync-scope-name-"));
     const xdgConfig = join(root, "xdg-config");
     const xdgData = join(root, "xdg-data");
@@ -467,15 +461,15 @@ describe("CLI completeness helpers", () => {
         ["skill", "add", "--id", "global-skill", "--source", `path:${skillDir}`, "--targets", "codex"],
         { cwd: globalRoot }
       );
-      await runCli(["profile", "create", "frontend", "--name", "Frontend"], { cwd: globalRoot });
-      await runCli(["profile", "add", "frontend", "skill:global-skill"], { cwd: globalRoot });
+      await runCli(["pack", "init", "frontend", "--name", "pack/frontend"], { cwd: globalRoot });
+      await runCli(["pack", "add", "frontend", "skill:global-skill"], { cwd: globalRoot });
 
       expect(
         await runCli(
-          ["profile", "sync", "frontend", "--scope", "global", "--to", "project", "--apply", "--agent", "codex"],
+          ["pack", "install", "frontend", "--scope", "global", "--to", "project", "--apply", "--agent", "codex"],
           { cwd: projectRoot }
         )
-      ).toContain(`Synced 2 export(s) from profile:frontend to ${projectRoot} and applied`);
+      ).toContain(`Installed 2 resource(s) from pack:frontend to ${projectRoot} and applied`);
 
       expect(await readFile(join(projectRoot, "use0-kit.toml"), "utf8")).toContain('id = "global-skill"');
       await access(join(projectRoot, ".codex", "skills", "global-skill", "SKILL.md"));
@@ -487,7 +481,7 @@ describe("CLI completeness helpers", () => {
     }
   });
 
-  test("profile use can activate a global profile into user scope", async () => {
+  test("pack install can activate a global pack into user scope", async () => {
     const root = await mkdtemp(join(tmpdir(), "use0-kit-profile-use-user-"));
     const xdgConfig = join(root, "xdg-config");
     const xdgData = join(root, "xdg-data");
@@ -510,15 +504,15 @@ describe("CLI completeness helpers", () => {
         ["skill", "add", "--id", "global-skill", "--source", `path:${skillDir}`, "--targets", "codex"],
         { cwd: globalRoot }
       );
-      await runCli(["profile", "create", "frontend", "--name", "Frontend"], { cwd: globalRoot });
-      await runCli(["profile", "add", "frontend", "skill:global-skill"], { cwd: globalRoot });
+      await runCli(["pack", "init", "frontend", "--name", "pack/frontend"], { cwd: globalRoot });
+      await runCli(["pack", "add", "frontend", "skill:global-skill"], { cwd: globalRoot });
 
-      expect(await runCli(["profile", "use", "frontend", "--scope", "user"], { cwd: root })).toContain(
-        "Using profile:frontend"
+      expect(await runCli(["pack", "install", "frontend", "--scope", "global", "--to", "user"], { cwd: root })).toContain(
+        `Installed 2 resource(s) from pack:frontend to ${userRoot}`
       );
-      expect(await readFile(join(userRoot, ".use0-kit", "state.json"), "utf8")).toContain('"activeProfile": "frontend"');
       const userManifest = await readFile(join(userRoot, "use0-kit.toml"), "utf8");
-      expect(userManifest).toContain('[[profiles]]');
+      expect(userManifest).not.toContain('[[profiles]]');
+      expect(userManifest).toContain('[[packs]]');
       expect(userManifest).toContain('id = "frontend"');
       expect(userManifest).toContain('[[skills]]');
       expect(userManifest).toContain('id = "global-skill"');
@@ -577,8 +571,8 @@ describe("CLI completeness helpers", () => {
         ["skill", "add", "--id", "global-skill", "--source", `path:${skillDir}`, "--targets", "codex"],
         { cwd: globalRoot }
       );
-      await runCli(["profile", "create", "frontend", "--scope", "global", "--name", "Frontend"], { cwd: root });
-      await runCli(["profile", "add", "frontend", "skill:global-skill", "--scope", "global"], { cwd: root });
+      await runCli(["pack", "init", "frontend", "--scope", "global", "--name", "pack/frontend"], { cwd: root });
+      await runCli(["pack", "add", "frontend", "skill:global-skill", "--scope", "global"], { cwd: root });
       await writeFile(
         join(projectRoot, "use0-kit.toml"),
         [
@@ -590,7 +584,7 @@ describe("CLI completeness helpers", () => {
           'mode = "project"',
           'canonical_store = ".use0-kit/store"',
           'materialize = "symlink"',
-          'parents = [{ scope = "global", profile = "frontend", mode = "pin" }]',
+          'parents = [{ scope = "global", selector = "pack:frontend", mode = "pin" }]',
           "",
           "[agents]",
           'enabled = ["codex"]'
@@ -599,45 +593,6 @@ describe("CLI completeness helpers", () => {
       );
 
       expect(await runCli(["sync"], { cwd: projectRoot })).toContain("Synced 2 resource(s) from declared parents and applied");
-      expect(await readFile(join(projectRoot, "use0-kit.toml"), "utf8")).toContain('id = "global-skill"');
-      await access(join(projectRoot, ".codex", "skills", "global-skill", "SKILL.md"));
-    } finally {
-      if (previousConfig === undefined) delete process.env.XDG_CONFIG_HOME;
-      else process.env.XDG_CONFIG_HOME = previousConfig;
-      if (previousData === undefined) delete process.env.XDG_DATA_HOME;
-      else process.env.XDG_DATA_HOME = previousData;
-    }
-  });
-
-  test("supports top-level sync --profile to activate a global profile into the current scope", async () => {
-    const root = await mkdtemp(join(tmpdir(), "use0-kit-sync-profile-"));
-    const xdgConfig = join(root, "xdg-config");
-    const xdgData = join(root, "xdg-data");
-    const projectRoot = join(root, "project");
-    const previousConfig = process.env.XDG_CONFIG_HOME;
-    const previousData = process.env.XDG_DATA_HOME;
-    process.env.XDG_CONFIG_HOME = xdgConfig;
-    process.env.XDG_DATA_HOME = xdgData;
-
-    try {
-      await mkdir(projectRoot, { recursive: true });
-      await runCli(["scope", "init", "--scope", "global"], { cwd: root });
-      await runCli(["scope", "init", "--scope", "project"], { cwd: projectRoot });
-
-      const globalRoot = join(xdgData, "use0-kit", "global");
-      const skillDir = join(globalRoot, "skills", "global-skill");
-      await mkdir(skillDir, { recursive: true });
-      await writeFile(join(skillDir, "SKILL.md"), "# Global Skill\n\nFrom sync profile.\n", "utf8");
-      await runCli(
-        ["skill", "add", "--id", "global-skill", "--source", `path:${skillDir}`, "--targets", "codex"],
-        { cwd: globalRoot }
-      );
-      await runCli(["profile", "create", "frontend", "--name", "Frontend"], { cwd: globalRoot });
-      await runCli(["profile", "add", "frontend", "skill:global-skill"], { cwd: globalRoot });
-
-      expect(await runCli(["sync", "--profile", "frontend", "--agent", "codex"], { cwd: projectRoot })).toContain(
-        "Synced 2 resource(s) from profile:frontend"
-      );
       expect(await readFile(join(projectRoot, "use0-kit.toml"), "utf8")).toContain('id = "global-skill"');
       await access(join(projectRoot, ".codex", "skills", "global-skill", "SKILL.md"));
     } finally {

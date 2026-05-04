@@ -2,7 +2,7 @@
 
 `use0-kit` is a local-first toolkit for managing AI-agent resources across multiple agent runtimes. It was designed from the `agent-kit` plan, but uses the `use0-kit` name and file layout.
 
-It gives you one vendor-neutral resource graph for skills, MCP servers, instructions, commands, subagents, hooks, packs, profiles, secrets, and plugins, then materializes that graph into the native directories/config files used by supported agents.
+It gives you one vendor-neutral resource graph for skills, MCP servers, instructions, commands, subagents, hooks, packs, secrets, and plugins, then materializes that graph into the native directories/config files used by supported agents.
 
 For a command-by-command first-use walkthrough, see [GUIDELINE.md](GUIDELINE.md).
 
@@ -23,8 +23,7 @@ Supported agent targets:
 - `command`: reusable markdown command files.
 - `subagent`: reusable subagent definitions.
 - `hook`: shell hook resources.
-- `pack`: versioned resource bundles.
-- `profile`: scope presets that export packs and individual resources.
+- `pack`: versioned resource bundles and the only public composition unit.
 - `secret`: environment-variable bindings for agent resources.
 - `plugin`: declarative plugin descriptors.
 
@@ -32,6 +31,7 @@ Core capabilities:
 
 - Hierarchical scopes: `global`, `user`, `workspace`, `project`, and `session`.
 - Resource synchronization between scopes with `inherit`, `pin`, `copy`, `fork`, and `mirror`.
+- Pack-first initialization with `init --with <pack>`; template behavior is expressed as consuming a pack during init.
 - Canonical store plus per-agent materialized views.
 - `plan` / `apply` workflow with preview, backups, verification, and materialization modes.
 - Registry search, sync, install, publish, local index, and quality metadata.
@@ -40,6 +40,21 @@ Core capabilities:
 - Minimal MCP server mode for agent self-management.
 
 Optional desktop UI and team dashboard are intentionally out of scope for this implementation phase.
+
+## Concept Model
+
+`use0-kit` intentionally keeps the public model small:
+
+```txt
+resource -> pack -> scope -> agent
+```
+
+- `resource` is the smallest unit, such as a skill, MCP server, instruction, command, subagent, hook, plugin, or secret binding.
+- `pack` is the only resource composition unit. Packs can contain resources and other packs.
+- `scope` is where resources become effective: `global`, `user`, `workspace`, `project`, or `session`.
+- `agent` is the target runtime that receives the materialized view, such as Codex, Cursor, Claude Code, or OpenCode.
+
+There is no first-class `profile` object. Profile-like workflows are represented by installing or syncing packs into scopes. There is also no first-class `template` object; initialization consumes packs with `init --with <pack>`.
 
 ## Install And Build
 
@@ -76,7 +91,7 @@ Typical project files:
 
 - `use0-kit.toml`: main manifest.
 - `use0-kit.lock.json`: effective resource lock state.
-- `.use0-kit/state.json`: apply state, backups, detected agents, active profile.
+- `.use0-kit/state.json`: apply state, backups, and detected agents.
 - `.use0-kit/materialized.json`: last materialized graph.
 - `.use0-kit/store/`: canonical resource store by default.
 - `.agents/`: vendor-neutral project-owned editable resources.
@@ -95,6 +110,12 @@ Initialize a project:
 
 ```bash
 use0-kit init --scope project --agents codex,cursor --yes
+```
+
+Initialize with a starter pack:
+
+```bash
+use0-kit init --scope project --with frontend --agents codex,cursor --yes
 ```
 
 Add a local skill:
@@ -168,7 +189,7 @@ Explain why a resource is effective:
 use0-kit scope explain skill:web-design --scope project --agent codex
 ```
 
-### Use Profiles And Packs
+### Use Packs
 
 Create a reusable frontend baseline:
 
@@ -176,21 +197,18 @@ Create a reusable frontend baseline:
 use0-kit pack init frontend --name acme/frontend
 use0-kit pack add frontend skill:web-design
 use0-kit pack add frontend mcp:context7
-
-use0-kit profile create frontend --targets codex,cursor
-use0-kit profile add frontend pack:frontend
 ```
 
-Sync a profile into a project:
+Install a pack into a project:
 
 ```bash
-use0-kit profile sync frontend --to project --mode pin --apply --agent codex
+use0-kit pack install frontend --to project --apply --agent codex
 ```
 
-Or use the top-level sync shortcut:
+Sync a pack from another scope:
 
 ```bash
-use0-kit sync --profile frontend --agent codex
+use0-kit scope sync --from global --to project pack:frontend --mode pin --apply --agent codex
 ```
 
 ### Registry Workflow
@@ -266,7 +284,6 @@ High-level commands:
 ```bash
 use0-kit init
 use0-kit scope ...
-use0-kit profile ...
 use0-kit agent ...
 use0-kit add / remove / list / info / edit / enable / disable
 use0-kit skill ...
@@ -341,7 +358,7 @@ Use explicit flags such as `--conflict`, `--prune`, or future destructive flags 
 
 ### `--verbose`
 
-`--verbose` keeps normal command output and appends execution context such as command, root, scope, agent selection, materialization mode, registry, profile, plan mode, and verification mode.
+`--verbose` keeps normal command output and appends execution context such as command, root, scope, agent selection, materialization mode, registry, plan mode, and verification mode.
 
 ## MCP Server Mode
 

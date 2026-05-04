@@ -4,7 +4,7 @@ export type ResourceTarget = AgentId | "*" | "universal";
 
 export interface ScopeParent {
   scope: ScopeName;
-  profile?: string;
+  selector?: string;
   mode?: "inherit" | "pin" | "copy" | "fork" | "mirror";
 }
 
@@ -42,7 +42,7 @@ export interface SkillResource {
   targets: ResourceTarget[];
   provenance?: Provenance;
   originScope?: string;
-  originProfile?: string;
+  originPack?: string;
   syncMode?: "inherit" | "pin" | "copy" | "fork" | "mirror";
   pinnedDigest?: string;
 }
@@ -53,7 +53,7 @@ export interface InstructionResource {
   targets: ResourceTarget[];
   provenance?: Provenance;
   originScope?: string;
-  originProfile?: string;
+  originPack?: string;
   syncMode?: "inherit" | "pin" | "copy" | "fork" | "mirror";
   pinnedDigest?: string;
 }
@@ -76,7 +76,7 @@ export interface CommandResource {
   targets: ResourceTarget[];
   provenance?: Provenance;
   originScope?: string;
-  originProfile?: string;
+  originPack?: string;
   syncMode?: "inherit" | "pin" | "copy" | "fork" | "mirror";
   pinnedDigest?: string;
 }
@@ -87,7 +87,7 @@ export interface SubagentResource {
   targets: ResourceTarget[];
   provenance?: Provenance;
   originScope?: string;
-  originProfile?: string;
+  originPack?: string;
   syncMode?: "inherit" | "pin" | "copy" | "fork" | "mirror";
   pinnedDigest?: string;
 }
@@ -100,19 +100,7 @@ export interface PackResource {
   signature?: PackSignature;
   provenance?: Provenance;
   originScope?: string;
-  originProfile?: string;
-  syncMode?: "inherit" | "pin" | "copy" | "fork" | "mirror";
-  pinnedDigest?: string;
-}
-
-export interface ProfileResource {
-  id: string;
-  name: string;
-  exports: string[];
-  defaultTargets?: ResourceTarget[];
-  provenance?: Provenance;
-  originScope?: string;
-  originProfile?: string;
+  originPack?: string;
   syncMode?: "inherit" | "pin" | "copy" | "fork" | "mirror";
   pinnedDigest?: string;
 }
@@ -123,7 +111,7 @@ export interface HookResource {
   targets: ResourceTarget[];
   provenance?: Provenance;
   originScope?: string;
-  originProfile?: string;
+  originPack?: string;
   syncMode?: "inherit" | "pin" | "copy" | "fork" | "mirror";
   pinnedDigest?: string;
 }
@@ -142,7 +130,7 @@ export interface PluginResource {
   targets: ResourceTarget[];
   provenance?: Provenance;
   originScope?: string;
-  originProfile?: string;
+  originPack?: string;
   syncMode?: "inherit" | "pin" | "copy" | "fork" | "mirror";
   pinnedDigest?: string;
 }
@@ -185,7 +173,6 @@ export interface Manifest {
   commands: CommandResource[];
   subagents: SubagentResource[];
   packs: PackResource[];
-  profiles: ProfileResource[];
   hooks: HookResource[];
   secrets: SecretResource[];
   plugins: PluginResource[];

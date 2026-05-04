@@ -22,7 +22,6 @@ export type RegistryItem = {
   targets?: string[];
   version?: string;
   resources?: string[];
-  exports?: string[];
   signature?: PackSignature;
   env?: string;
   required?: boolean;
@@ -179,9 +178,6 @@ function toRegistryItem(selector: string, resource: SelectorResource, registryNa
   if ("targets" in resource) {
     base.targets = resource.targets;
   }
-  if ("defaultTargets" in resource && Array.isArray(resource.defaultTargets)) {
-    base.targets = resource.defaultTargets;
-  }
   if ("version" in resource) {
     base.version = resource.version;
   }
@@ -190,9 +186,6 @@ function toRegistryItem(selector: string, resource: SelectorResource, registryNa
   }
   if ("signature" in resource) {
     base.signature = resource.signature;
-  }
-  if ("exports" in resource) {
-    base.exports = resource.exports;
   }
   if ("env" in resource && typeof resource.env === "string") {
     base.env = resource.env;
@@ -231,7 +224,7 @@ function deriveQualitySignals(item: RegistryItem): NonNullable<RegistryItem["qua
   if ((item.targets?.length ?? 0) > 0) {
     score += 5;
   }
-  if ((item.resources?.length ?? 0) > 0 || (item.exports?.length ?? 0) > 0) {
+  if ((item.resources?.length ?? 0) > 0) {
     score += 5;
   }
   if (item.signature?.digest) {
@@ -748,15 +741,6 @@ export async function installFromRegistry(
       signature: item.signature,
       provenance: item.provenance
     });
-  } else if (item.kind === "profile") {
-    manifest.profiles = manifest.profiles.filter((entry) => entry.id !== item.id);
-    manifest.profiles.push({
-      id: item.id,
-      name: item.name,
-      exports: item.exports ?? [],
-      defaultTargets: item.targets as typeof manifest.profiles[number]["defaultTargets"],
-      provenance: item.provenance
-    });
   } else if (item.kind === "secret") {
     manifest.secrets = manifest.secrets.filter((entry) => entry.id !== item.id);
     manifest.secrets.push({
@@ -782,11 +766,6 @@ export async function installFromRegistry(
 
   if (item.kind === "pack") {
     for (const child of item.resources ?? []) {
-      await installFromRegistry(root, child, registryName, visited);
-    }
-  }
-  if (item.kind === "profile") {
-    for (const child of item.exports ?? []) {
       await installFromRegistry(root, child, registryName, visited);
     }
   }

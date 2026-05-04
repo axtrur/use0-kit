@@ -57,8 +57,6 @@ describe("remaining command surfaces", () => {
       cwd: fromRoot
     });
     await runCli(["pack", "add", "frontend", "hook:pre-apply"], { cwd: fromRoot });
-    await runCli(["profile", "create", "frontend", "--name", "Frontend"], { cwd: fromRoot });
-    await runCli(["profile", "add", "frontend", "pack:frontend"], { cwd: fromRoot });
 
     expect(await runCli(["mcp", "test", "context7"], { cwd: fromRoot })).toContain("ok");
     expect(await runCli(["mcp", "env", "context7"], { cwd: fromRoot })).toContain("command=npx");
@@ -80,7 +78,7 @@ describe("remaining command surfaces", () => {
     expect(await runCli(["mcp", "list"], { cwd: toRoot })).toContain("context7");
     expect(await runCli(["list", "--kind", "secret"], { cwd: toRoot })).toContain("secret:openai");
     expect(await runCli(["list", "--kind", "pack"], { cwd: toRoot })).toContain("pack:frontend");
-    expect(await runCli(["list", "--kind", "profile"], { cwd: toRoot })).toContain("profile:frontend");
+    expect(await runCli(["list", "--kind", "profile"], { cwd: toRoot })).toBe("");
     expect(await runCli(["hook", "test", "pre-apply"], { cwd: toRoot })).toContain("executed");
     expect(await readFile(hookToMarker, "utf8")).toBe("hook-ran");
 

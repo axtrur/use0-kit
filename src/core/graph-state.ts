@@ -13,7 +13,7 @@ export type EffectiveGraphEntry = {
   resolvedUrl?: string;
   resolvedRef?: string;
   originScope?: string;
-  originProfile?: string;
+  originPack?: string;
   scopeMode?: string;
   targets?: string[];
   materialized?: Record<string, string | string[]>;
@@ -154,7 +154,7 @@ export async function collectEffectiveGraph(root: string): Promise<EffectiveGrap
       resolvedUrl: metadata.resolvedUrl,
       resolvedRef: metadata.resolvedRef,
       originScope: skill.originScope,
-      originProfile: skill.originProfile,
+      originPack: skill.originPack,
       scopeMode: skill.syncMode,
       targets: skill.targets,
       materialized: materialized[`skill:${skill.id}`],
@@ -183,7 +183,7 @@ export async function collectEffectiveGraph(root: string): Promise<EffectiveGrap
       resolvedUrl: metadata.resolvedUrl,
       resolvedRef: metadata.resolvedRef,
       originScope: instruction.originScope,
-      originProfile: instruction.originProfile,
+      originPack: instruction.originPack,
       scopeMode: instruction.syncMode,
       targets: instruction.targets,
       materialized: materialized[`instruction:${instruction.id}`],
@@ -199,7 +199,7 @@ export async function collectEffectiveGraph(root: string): Promise<EffectiveGrap
       resolvedUrl: metadata.resolvedUrl,
       resolvedRef: metadata.resolvedRef,
       originScope: command.originScope,
-      originProfile: command.originProfile,
+      originPack: command.originPack,
       scopeMode: command.syncMode,
       targets: command.targets,
       materialized: materialized[`command:${command.id}`],
@@ -215,7 +215,7 @@ export async function collectEffectiveGraph(root: string): Promise<EffectiveGrap
       resolvedUrl: metadata.resolvedUrl,
       resolvedRef: metadata.resolvedRef,
       originScope: subagent.originScope,
-      originProfile: subagent.originProfile,
+      originPack: subagent.originPack,
       scopeMode: subagent.syncMode,
       targets: subagent.targets,
       materialized: materialized[`subagent:${subagent.id}`],
@@ -231,7 +231,7 @@ export async function collectEffectiveGraph(root: string): Promise<EffectiveGrap
       resolvedUrl: metadata.resolvedUrl,
       resolvedRef: metadata.resolvedRef,
       originScope: hook.originScope,
-      originProfile: hook.originProfile,
+      originPack: hook.originPack,
       scopeMode: hook.syncMode,
       targets: hook.targets,
       materialized: materialized[`hook:${hook.id}`],
@@ -247,27 +247,11 @@ export async function collectEffectiveGraph(root: string): Promise<EffectiveGrap
       resolvedUrl: metadata.resolvedUrl,
       resolvedRef: metadata.resolvedRef,
       originScope: pack.originScope,
-      originProfile: pack.originProfile,
+      originPack: pack.originPack,
       scopeMode: pack.syncMode,
       targets: [],
       materialized: materialized[`pack:${pack.id}`],
       provenance: pack.provenance
-    };
-  }
-  for (const profile of manifest.profiles) {
-    const metadata = resolveSourceMetadata(profile.provenance?.source, profile.provenance);
-    resources[`profile:${profile.id}`] = {
-      kind: "profile",
-      digest: await digestWithOptionalSource(profile),
-      source: profile.name,
-      resolvedUrl: metadata.resolvedUrl,
-      resolvedRef: metadata.resolvedRef,
-      originScope: profile.originScope,
-      originProfile: profile.originProfile,
-      scopeMode: profile.syncMode,
-      targets: [],
-      materialized: materialized[`profile:${profile.id}`],
-      provenance: profile.provenance
     };
   }
   for (const secret of manifest.secrets) {
@@ -292,7 +276,7 @@ export async function collectEffectiveGraph(root: string): Promise<EffectiveGrap
       resolvedUrl: metadata.resolvedUrl,
       resolvedRef: metadata.resolvedRef,
       originScope: plugin.originScope,
-      originProfile: plugin.originProfile,
+      originPack: plugin.originPack,
       scopeMode: plugin.syncMode,
       targets: plugin.targets,
       materialized: materialized[`plugin:${plugin.id}`],

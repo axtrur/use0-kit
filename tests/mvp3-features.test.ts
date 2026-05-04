@@ -71,7 +71,7 @@ describe("MVP3 features", () => {
     expect(filtered).not.toContain("subagent:backend");
   });
 
-  test("supports profile create add sync and registry search/info", async () => {
+  test("supports pack create add sync and registry search/info", async () => {
     const root = await mkdtemp(join(tmpdir(), "use0-kit-registry-"));
     const sourceRoot = join(root, "source");
     const targetRoot = join(root, "target");
@@ -125,12 +125,12 @@ describe("MVP3 features", () => {
       ],
       { cwd: sourceRoot }
     );
-    await runCli(["profile", "create", "frontend", "--name", "Frontend Baseline"], {
+    await runCli(["pack", "init", "frontend", "--name", "pack/frontend"], {
       cwd: sourceRoot
     });
-    await runCli(["profile", "add", "frontend", "skill:web-design"], { cwd: sourceRoot });
-    await runCli(["profile", "add", "frontend", "mcp:context7"], { cwd: sourceRoot });
-    await runCli(["profile", "sync", "frontend", "--to", targetRoot], { cwd: sourceRoot });
+    await runCli(["pack", "add", "frontend", "skill:web-design"], { cwd: sourceRoot });
+    await runCli(["pack", "add", "frontend", "mcp:context7"], { cwd: sourceRoot });
+    await runCli(["scope", "sync", "--from", sourceRoot, "--to", targetRoot, "pack:frontend"], { cwd: sourceRoot });
 
     const searchOutput = await runCli(["registry", "add", "official", registryPath], {
       cwd: sourceRoot

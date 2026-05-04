@@ -3,7 +3,6 @@ import { join } from "node:path";
 
 import { collectEffectiveGraph } from "./graph-state.js";
 import { loadManifest, saveManifest, ensureLockfile, ensureState } from "./manifest.js";
-import { syncProfile } from "./profiles.js";
 import {
   applySelectorToManifest,
   describeSelectorResource,
@@ -52,7 +51,6 @@ export async function initScope(options: InitScopeOptions): Promise<void> {
     commands: [],
     subagents: [],
     packs: [],
-    profiles: [],
     hooks: [],
     secrets: [],
     plugins: [],
@@ -140,7 +138,7 @@ export async function inspectScopeSnapshot(
   path: string;
   manifest: string;
   parents: number;
-  parentEntries: Array<{ scope: string; profile?: string; mode?: string }>;
+  parentEntries: Array<{ scope: string; selector?: string; mode?: string }>;
   resources: number;
   selectors: string[];
   materialized?: Record<string, Record<string, string | string[]>>;
@@ -185,7 +183,7 @@ export async function inspectScopeSnapshot(
     parents: manifest.scope?.parents.length ?? 0,
     parentEntries: (manifest.scope?.parents ?? []).map((parent) => ({
       scope: parent.scope,
-      profile: parent.profile,
+      selector: parent.selector,
       mode: parent.mode
     })),
     resources: selectors.length,
@@ -210,7 +208,7 @@ export async function inspectScopeDetailed(
     `manifest=${snapshot.manifest}`,
     `parents=${snapshot.parents}`,
     ...snapshot.parentEntries.map((parent, index) =>
-      `parent[${index}]=scope:${parent.scope}${parent.profile ? `,profile:${parent.profile}` : ""}${parent.mode ? `,mode:${parent.mode}` : ""}`
+      `parent[${index}]=scope:${parent.scope}${parent.selector ? `,selector:${parent.selector}` : ""}${parent.mode ? `,mode:${parent.mode}` : ""}`
     ),
     `resources=${snapshot.resources}`,
     ...Object.entries(snapshot.materialized ?? {}).map(
@@ -438,16 +436,10 @@ export async function syncDeclaredParents(cwd: string): Promise<number> {
     if (!fromRoot || fromRoot === "internal") {
       continue;
     }
-    if (parent.profile) {
-      synced += await syncProfile(fromRoot, parent.profile, root, {
-        mode: parent.mode,
-        conflict: manifest.policy.onConflict
-      });
-      continue;
-    }
     synced += await syncScopesDetailed({
       fromRoot,
       toRoot: root,
+      selector: parent.selector,
       mode: parent.mode,
       conflict: manifest.policy.onConflict
     });

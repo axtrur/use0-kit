@@ -115,20 +115,6 @@ use0-kit pack add demo skill:codex-project-setup
 功能：把 skill 放入 pack。  
 可能变化：更新 `pack:demo` 的 `resources` 列表。
 
-```bash
-use0-kit profile create demo --name Demo
-```
-
-功能：创建一个可同步的使用方案。  
-可能变化：在 `use0-kit.toml` 中新增 `profile:demo`。
-
-```bash
-use0-kit profile add demo pack:demo
-```
-
-功能：把 pack 放入 profile。  
-可能变化：更新 `profile:demo` 的 `exports` 列表。
-
 ## 4. Plan And Apply
 
 ```bash

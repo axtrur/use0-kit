@@ -6,13 +6,12 @@ import { describe, expect, test } from "vitest";
 import { runCli } from "../src/cli.js";
 
 describe("additional CLI surfaces", () => {
-  test("supports pack list/remove/build/import and profile list/remove/export/import/use", async () => {
+  test("supports pack list/remove/build/import without profile resources", async () => {
     const root = await mkdtemp(join(tmpdir(), "use0-kit-extra-"));
     const projectRoot = join(root, "project");
     const importedRoot = join(root, "imported");
     const skillDir = join(projectRoot, "skills", "repo-conventions");
     const packOut = join(root, "frontend.agentpack.json");
-    const profileOut = join(root, "frontend.profile.toml");
 
     await mkdir(skillDir, { recursive: true });
     await writeFile(join(skillDir, "SKILL.md"), "# Repo Conventions\n", "utf8");
@@ -27,40 +26,22 @@ describe("additional CLI surfaces", () => {
       cwd: projectRoot
     });
     await runCli(["pack", "add", "frontend", "skill:repo-conventions"], { cwd: projectRoot });
-    await runCli(["profile", "create", "frontend", "--name", "Frontend Baseline"], {
-      cwd: projectRoot
-    });
-    await runCli(["profile", "add", "frontend", "skill:repo-conventions"], { cwd: projectRoot });
-    await runCli(["profile", "remove", "frontend"], { cwd: projectRoot });
-    await runCli(["profile", "create", "frontend", "--name", "Frontend Baseline", "--targets", "codex,cursor"], {
-      cwd: projectRoot
-    });
-    await runCli(["profile", "add", "frontend", "skill:repo-conventions"], { cwd: projectRoot });
 
     expect(await runCli(["pack", "list"], { cwd: projectRoot })).toContain("frontend");
-    expect(await runCli(["profile", "list"], { cwd: projectRoot })).toContain("frontend");
 
     await runCli(["pack", "build", "frontend", "--out", packOut], { cwd: projectRoot });
-    await runCli(["profile", "export", "frontend", "--out", profileOut], { cwd: projectRoot });
-    expect(await readFile(profileOut, "utf8")).toContain("[profile]");
-    expect(await readFile(profileOut, "utf8")).toContain('default_targets = ["codex", "cursor"]');
     await runCli(["pack", "import", packOut], { cwd: importedRoot });
-    await runCli(["profile", "import", profileOut], { cwd: importedRoot });
-    await runCli(["profile", "use", "frontend"], { cwd: importedRoot });
 
     expect(await readFile(join(importedRoot, "use0-kit.toml"), "utf8")).toContain('id = "frontend"');
     expect(await readFile(join(importedRoot, "use0-kit.toml"), "utf8")).toContain('id = "repo-conventions"');
     expect(await runCli(["info", "skill:repo-conventions"], { cwd: importedRoot })).toContain("source=path:");
-    expect(await runCli(["info", "profile:frontend"], { cwd: importedRoot })).toContain("default_targets=codex,cursor");
 
     await runCli(["pack", "remove", "frontend"], { cwd: projectRoot });
-    await runCli(["profile", "remove", "frontend"], { cwd: projectRoot });
 
     expect(await runCli(["pack", "list"], { cwd: projectRoot })).not.toContain("frontend");
-    expect(await runCli(["profile", "list"], { cwd: projectRoot })).not.toContain("frontend");
   });
 
-  test("supports ref alias round-trip for pack and profile manifests", async () => {
+  test("supports ref alias round-trip for pack manifests", async () => {
     const root = await mkdtemp(join(tmpdir(), "use0-kit-pack-profile-ref-"));
 
     await runCli(["scope", "init", "--scope", "project"], { cwd: root });
@@ -86,26 +67,17 @@ describe("additional CLI surfaces", () => {
         'version = "1.0.0"',
         "resources = []",
         'ref = "v1.0.0"',
-        "",
-        "[[profiles]]",
-        'id = "developer"',
-        'name = "Developer"',
-        "exports = []",
-        'ref = "v2026.05"',
         ""
       ].join("\n")
     );
 
-    const listed = await runCli(["list", "pack:frontend", "profile:developer"], { cwd: root });
+    const listed = await runCli(["list", "pack:frontend"], { cwd: root });
     expect(listed).toContain("pack:frontend");
-    expect(listed).toContain("profile:developer");
 
     expect(await runCli(["info", "pack:frontend"], { cwd: root })).toContain("ref=v1.0.0");
-    expect(await runCli(["info", "profile:developer"], { cwd: root })).toContain("ref=v2026.05");
 
     const saved = await readFile(join(root, "use0-kit.toml"), "utf8");
     expect(saved).toContain('ref = "v1.0.0"');
-    expect(saved).toContain('ref = "v2026.05"');
     expect(saved).not.toContain("provenance_ref");
   });
 

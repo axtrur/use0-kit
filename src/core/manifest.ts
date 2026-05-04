@@ -11,7 +11,6 @@ import type {
   MaterializationMode,
   PackResource,
   PolicyConfig,
-  ProfileResource,
   ResourceTarget,
   SecretResource,
   PluginResource,
@@ -33,7 +32,6 @@ function hasProvenanceValue(
     | CommandResource["provenance"]
     | SubagentResource["provenance"]
     | PackResource["provenance"]
-    | ProfileResource["provenance"]
     | HookResource["provenance"]
     | SecretResource["provenance"]
     | PluginResource["provenance"]
@@ -60,7 +58,6 @@ const DEFAULT_MANIFEST: Manifest = {
   commands: [],
   subagents: [],
   packs: [],
-  profiles: [],
   hooks: [],
   secrets: [],
   plugins: [],
@@ -94,12 +91,12 @@ function parseScopeParents(raw: string): ScopeParent[] {
         continue;
       }
       if (rawKey === "scope") parent.scope = parseString(rawValue) as ScopeName;
-      if (rawKey === "profile") parent.profile = parseString(rawValue);
+      if (rawKey === "selector") parent.selector = parseString(rawValue);
       if (rawKey === "mode") parent.mode = parseString(rawValue) as ScopeParent["mode"];
     }
     return {
       scope: parent.scope ?? "project",
-      profile: parent.profile,
+      selector: parent.selector,
       mode: parent.mode
     };
   });
@@ -113,7 +110,6 @@ export function parseManifest(input: string): Manifest {
   let currentCommand: Partial<CommandResource> | null = null;
   let currentSubagent: Partial<SubagentResource> | null = null;
   let currentPack: Partial<PackResource> | null = null;
-  let currentProfile: Partial<ProfileResource> | null = null;
   let currentHook: Partial<HookResource> | null = null;
   let currentSecret: Partial<SecretResource> | null = null;
   let currentPlugin: Partial<PluginResource> | null = null;
@@ -131,7 +127,7 @@ export function parseManifest(input: string): Manifest {
         targets: (currentSkill.targets ?? []) as ResourceTarget[],
         provenance: currentSkill.provenance,
         originScope: currentSkill.originScope,
-        originProfile: currentSkill.originProfile,
+        originPack: currentSkill.originPack,
         syncMode: currentSkill.syncMode as SkillResource["syncMode"],
         pinnedDigest: currentSkill.pinnedDigest
       });
@@ -144,7 +140,7 @@ export function parseManifest(input: string): Manifest {
         targets: (currentInstruction.targets ?? []) as ResourceTarget[],
         provenance: currentInstruction.provenance,
         originScope: currentInstruction.originScope,
-        originProfile: currentInstruction.originProfile,
+        originPack: currentInstruction.originPack,
         syncMode: currentInstruction.syncMode as InstructionResource["syncMode"],
         pinnedDigest: currentInstruction.pinnedDigest
       });
@@ -171,7 +167,7 @@ export function parseManifest(input: string): Manifest {
         targets: (currentCommand.targets ?? []) as ResourceTarget[],
         provenance: currentCommand.provenance,
         originScope: currentCommand.originScope,
-        originProfile: currentCommand.originProfile,
+        originPack: currentCommand.originPack,
         syncMode: currentCommand.syncMode as CommandResource["syncMode"],
         pinnedDigest: currentCommand.pinnedDigest
       });
@@ -184,7 +180,7 @@ export function parseManifest(input: string): Manifest {
         targets: (currentSubagent.targets ?? []) as ResourceTarget[],
         provenance: currentSubagent.provenance,
         originScope: currentSubagent.originScope,
-        originProfile: currentSubagent.originProfile,
+        originPack: currentSubagent.originPack,
         syncMode: currentSubagent.syncMode as SubagentResource["syncMode"],
         pinnedDigest: currentSubagent.pinnedDigest
       });
@@ -199,25 +195,11 @@ export function parseManifest(input: string): Manifest {
         signature: currentPack.signature,
         provenance: currentPack.provenance,
         originScope: currentPack.originScope,
-        originProfile: currentPack.originProfile,
+        originPack: currentPack.originPack,
         syncMode: currentPack.syncMode as PackResource["syncMode"],
         pinnedDigest: currentPack.pinnedDigest
       });
       currentPack = null;
-    }
-    if (currentProfile) {
-      manifest.profiles.push({
-        id: currentProfile.id ?? "",
-        name: currentProfile.name ?? "",
-        exports: currentProfile.exports ?? [],
-        defaultTargets: (currentProfile.defaultTargets ?? []) as ResourceTarget[],
-        provenance: currentProfile.provenance,
-        originScope: currentProfile.originScope,
-        originProfile: currentProfile.originProfile,
-        syncMode: currentProfile.syncMode as ProfileResource["syncMode"],
-        pinnedDigest: currentProfile.pinnedDigest
-      });
-      currentProfile = null;
     }
     if (currentHook) {
       manifest.hooks.push({
@@ -226,7 +208,7 @@ export function parseManifest(input: string): Manifest {
         targets: (currentHook.targets ?? []) as ResourceTarget[],
         provenance: currentHook.provenance,
         originScope: currentHook.originScope,
-        originProfile: currentHook.originProfile,
+        originPack: currentHook.originPack,
         syncMode: currentHook.syncMode as HookResource["syncMode"],
         pinnedDigest: currentHook.pinnedDigest
       });
@@ -249,7 +231,7 @@ export function parseManifest(input: string): Manifest {
         targets: (currentPlugin.targets ?? []) as ResourceTarget[],
         provenance: currentPlugin.provenance,
         originScope: currentPlugin.originScope,
-        originProfile: currentPlugin.originProfile,
+        originPack: currentPlugin.originPack,
         syncMode: currentPlugin.syncMode as PluginResource["syncMode"],
         pinnedDigest: currentPlugin.pinnedDigest
       });
@@ -314,14 +296,6 @@ export function parseManifest(input: string): Manifest {
       inTrust = false;
       inAgents = false;
       currentPack = {};
-      continue;
-    }
-    if (line === "[[profiles]]") {
-      flushCurrent();
-      inPolicy = false;
-      inTrust = false;
-      inAgents = false;
-      currentProfile = {};
       continue;
     }
     if (line === "[[hooks]]") {
@@ -413,7 +387,7 @@ export function parseManifest(input: string): Manifest {
         if (key === "provenance_digest") currentSkill.provenance.digest = parseString(value);
       }
       if (key === "origin_scope") currentSkill.originScope = parseString(value);
-      if (key === "origin_profile") currentSkill.originProfile = parseString(value);
+      if (key === "origin_pack") currentSkill.originPack = parseString(value);
       if (key === "sync_mode" || key === "scope_mode") {
         currentSkill.syncMode = parseString(value) as SkillResource["syncMode"];
       }
@@ -438,7 +412,7 @@ export function parseManifest(input: string): Manifest {
         if (key === "provenance_digest") currentCommand.provenance.digest = parseString(value);
       }
       if (key === "origin_scope") currentCommand.originScope = parseString(value);
-      if (key === "origin_profile") currentCommand.originProfile = parseString(value);
+      if (key === "origin_pack") currentCommand.originPack = parseString(value);
       if (key === "sync_mode" || key === "scope_mode") {
         currentCommand.syncMode = parseString(value) as CommandResource["syncMode"];
       }
@@ -463,7 +437,7 @@ export function parseManifest(input: string): Manifest {
         if (key === "provenance_digest") currentSubagent.provenance.digest = parseString(value);
       }
       if (key === "origin_scope") currentSubagent.originScope = parseString(value);
-      if (key === "origin_profile") currentSubagent.originProfile = parseString(value);
+      if (key === "origin_pack") currentSubagent.originPack = parseString(value);
       if (key === "sync_mode" || key === "scope_mode") currentSubagent.syncMode = parseString(value) as SubagentResource["syncMode"];
       if (key === "pinned_digest") currentSubagent.pinnedDigest = parseString(value);
       continue;
@@ -502,35 +476,12 @@ export function parseManifest(input: string): Manifest {
         if (key === "provenance_digest") currentPack.provenance.digest = parseString(value);
       }
       if (key === "origin_scope") currentPack.originScope = parseString(value);
-      if (key === "origin_profile") currentPack.originProfile = parseString(value);
+      if (key === "origin_pack") currentPack.originPack = parseString(value);
       if (key === "sync_mode" || key === "scope_mode") currentPack.syncMode = parseString(value) as PackResource["syncMode"];
       if (key === "pinned_digest") currentPack.pinnedDigest = parseString(value);
       continue;
     }
 
-    if (currentProfile) {
-      if (key === "id") currentProfile.id = parseString(value);
-      if (key === "name") currentProfile.name = parseString(value);
-      if (key === "exports") currentProfile.exports = parseStringArray(value);
-      if (key === "default_targets") currentProfile.defaultTargets = parseStringArray(value) as ResourceTarget[];
-      if (key === "ref") {
-        currentProfile.provenance ??= {};
-        currentProfile.provenance.ref = parseString(value);
-      }
-      if (key.startsWith("provenance_")) {
-        currentProfile.provenance ??= {};
-        if (key === "provenance_source") currentProfile.provenance.source = parseString(value);
-        if (key === "provenance_ref") currentProfile.provenance.ref = parseString(value);
-        if (key === "provenance_registry") currentProfile.provenance.registry = parseString(value);
-        if (key === "provenance_published_at") currentProfile.provenance.publishedAt = parseString(value);
-        if (key === "provenance_digest") currentProfile.provenance.digest = parseString(value);
-      }
-      if (key === "origin_scope") currentProfile.originScope = parseString(value);
-      if (key === "origin_profile") currentProfile.originProfile = parseString(value);
-      if (key === "sync_mode" || key === "scope_mode") currentProfile.syncMode = parseString(value) as ProfileResource["syncMode"];
-      if (key === "pinned_digest") currentProfile.pinnedDigest = parseString(value);
-      continue;
-    }
 
     if (currentHook) {
       if (key === "id") currentHook.id = parseString(value);
@@ -549,7 +500,7 @@ export function parseManifest(input: string): Manifest {
         if (key === "provenance_digest") currentHook.provenance.digest = parseString(value);
       }
       if (key === "origin_scope") currentHook.originScope = parseString(value);
-      if (key === "origin_profile") currentHook.originProfile = parseString(value);
+      if (key === "origin_pack") currentHook.originPack = parseString(value);
       if (key === "sync_mode" || key === "scope_mode") {
         currentHook.syncMode = parseString(value) as HookResource["syncMode"];
       }
@@ -595,7 +546,7 @@ export function parseManifest(input: string): Manifest {
         if (key === "provenance_digest") currentPlugin.provenance.digest = parseString(value);
       }
       if (key === "origin_scope") currentPlugin.originScope = parseString(value);
-      if (key === "origin_profile") currentPlugin.originProfile = parseString(value);
+      if (key === "origin_pack") currentPlugin.originPack = parseString(value);
       if (key === "sync_mode" || key === "scope_mode") currentPlugin.syncMode = parseString(value) as PluginResource["syncMode"];
       if (key === "pinned_digest") currentPlugin.pinnedDigest = parseString(value);
       continue;
@@ -638,7 +589,7 @@ export function parseManifest(input: string): Manifest {
         if (key === "provenance_digest") currentInstruction.provenance.digest = parseString(value);
       }
       if (key === "origin_scope") currentInstruction.originScope = parseString(value);
-      if (key === "origin_profile") currentInstruction.originProfile = parseString(value);
+      if (key === "origin_pack") currentInstruction.originPack = parseString(value);
       if (key === "sync_mode" || key === "scope_mode") {
         currentInstruction.syncMode = parseString(value) as InstructionResource["syncMode"];
       }
@@ -714,7 +665,7 @@ export function serializeManifest(manifest: Manifest): string {
         manifest.scope.parents
           .map((parent) => {
             const parts = [`scope = "${parent.scope}"`];
-            if (parent.profile) parts.push(`profile = "${parent.profile}"`);
+            if (parent.selector) parts.push(`selector = "${parent.selector}"`);
             if (parent.mode) parts.push(`mode = "${parent.mode}"`);
             return `{ ${parts.join(", ")} }`;
           })
@@ -740,7 +691,7 @@ export function serializeManifest(manifest: Manifest): string {
       if (skill.provenance?.digest) lines.push(`provenance_digest = "${skill.provenance.digest}"`);
     }
     if (skill.originScope) lines.push(`origin_scope = "${skill.originScope}"`);
-    if (skill.originProfile) lines.push(`origin_profile = "${skill.originProfile}"`);
+    if (skill.originPack) lines.push(`origin_pack = "${skill.originPack}"`);
     if (skill.syncMode) lines.push(`scope_mode = "${skill.syncMode}"`);
     if (skill.pinnedDigest) lines.push(`pinned_digest = "${skill.pinnedDigest}"`);
   }
@@ -760,7 +711,7 @@ export function serializeManifest(manifest: Manifest): string {
       if (instruction.provenance?.digest) lines.push(`provenance_digest = "${instruction.provenance.digest}"`);
     }
     if (instruction.originScope) lines.push(`origin_scope = "${instruction.originScope}"`);
-    if (instruction.originProfile) lines.push(`origin_profile = "${instruction.originProfile}"`);
+    if (instruction.originPack) lines.push(`origin_pack = "${instruction.originPack}"`);
     if (instruction.syncMode) lines.push(`scope_mode = "${instruction.syncMode}"`);
     if (instruction.pinnedDigest) lines.push(`pinned_digest = "${instruction.pinnedDigest}"`);
   }
@@ -797,7 +748,7 @@ export function serializeManifest(manifest: Manifest): string {
       if (command.provenance?.digest) lines.push(`provenance_digest = "${command.provenance.digest}"`);
     }
     if (command.originScope) lines.push(`origin_scope = "${command.originScope}"`);
-    if (command.originProfile) lines.push(`origin_profile = "${command.originProfile}"`);
+    if (command.originPack) lines.push(`origin_pack = "${command.originPack}"`);
     if (command.syncMode) lines.push(`scope_mode = "${command.syncMode}"`);
     if (command.pinnedDigest) lines.push(`pinned_digest = "${command.pinnedDigest}"`);
   }
@@ -815,7 +766,7 @@ export function serializeManifest(manifest: Manifest): string {
       if (subagent.provenance?.digest) lines.push(`provenance_digest = "${subagent.provenance.digest}"`);
     }
     if (subagent.originScope) lines.push(`origin_scope = "${subagent.originScope}"`);
-    if (subagent.originProfile) lines.push(`origin_profile = "${subagent.originProfile}"`);
+    if (subagent.originPack) lines.push(`origin_pack = "${subagent.originPack}"`);
     if (subagent.syncMode) lines.push(`scope_mode = "${subagent.syncMode}"`);
     if (subagent.pinnedDigest) lines.push(`pinned_digest = "${subagent.pinnedDigest}"`);
   }
@@ -841,30 +792,9 @@ export function serializeManifest(manifest: Manifest): string {
       if (pack.provenance?.digest) lines.push(`provenance_digest = "${pack.provenance.digest}"`);
     }
     if (pack.originScope) lines.push(`origin_scope = "${pack.originScope}"`);
-    if (pack.originProfile) lines.push(`origin_profile = "${pack.originProfile}"`);
+    if (pack.originPack) lines.push(`origin_pack = "${pack.originPack}"`);
     if (pack.syncMode) lines.push(`scope_mode = "${pack.syncMode}"`);
     if (pack.pinnedDigest) lines.push(`pinned_digest = "${pack.pinnedDigest}"`);
-  }
-
-  for (const profile of manifest.profiles) {
-    lines.push("", "[[profiles]]");
-    lines.push(`id = "${profile.id}"`);
-    lines.push(`name = "${profile.name}"`);
-    lines.push(`exports = [${profile.exports.map((item) => `"${item}"`).join(", ")}]`);
-    if (profile.defaultTargets?.length) {
-      lines.push(`default_targets = [${profile.defaultTargets.map((item) => `"${item}"`).join(", ")}]`);
-    }
-    if (hasProvenanceValue(profile.provenance)) {
-      if (profile.provenance?.source) lines.push(`provenance_source = "${profile.provenance.source}"`);
-      if (profile.provenance?.ref) lines.push(`ref = "${profile.provenance.ref}"`);
-      if (profile.provenance?.registry) lines.push(`provenance_registry = "${profile.provenance.registry}"`);
-      if (profile.provenance?.publishedAt) lines.push(`provenance_published_at = "${profile.provenance.publishedAt}"`);
-      if (profile.provenance?.digest) lines.push(`provenance_digest = "${profile.provenance.digest}"`);
-    }
-    if (profile.originScope) lines.push(`origin_scope = "${profile.originScope}"`);
-    if (profile.originProfile) lines.push(`origin_profile = "${profile.originProfile}"`);
-    if (profile.syncMode) lines.push(`scope_mode = "${profile.syncMode}"`);
-    if (profile.pinnedDigest) lines.push(`pinned_digest = "${profile.pinnedDigest}"`);
   }
 
   for (const hook of manifest.hooks) {
@@ -880,7 +810,7 @@ export function serializeManifest(manifest: Manifest): string {
       if (hook.provenance?.digest) lines.push(`provenance_digest = "${hook.provenance.digest}"`);
     }
     if (hook.originScope) lines.push(`origin_scope = "${hook.originScope}"`);
-    if (hook.originProfile) lines.push(`origin_profile = "${hook.originProfile}"`);
+    if (hook.originPack) lines.push(`origin_pack = "${hook.originPack}"`);
     if (hook.syncMode) lines.push(`scope_mode = "${hook.syncMode}"`);
     if (hook.pinnedDigest) lines.push(`pinned_digest = "${hook.pinnedDigest}"`);
   }
@@ -913,7 +843,7 @@ export function serializeManifest(manifest: Manifest): string {
       if (plugin.provenance?.digest) lines.push(`provenance_digest = "${plugin.provenance.digest}"`);
     }
     if (plugin.originScope) lines.push(`origin_scope = "${plugin.originScope}"`);
-    if (plugin.originProfile) lines.push(`origin_profile = "${plugin.originProfile}"`);
+    if (plugin.originPack) lines.push(`origin_pack = "${plugin.originPack}"`);
     if (plugin.syncMode) lines.push(`scope_mode = "${plugin.syncMode}"`);
     if (plugin.pinnedDigest) lines.push(`pinned_digest = "${plugin.pinnedDigest}"`);
   }

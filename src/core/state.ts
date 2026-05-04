@@ -15,7 +15,6 @@ export type Use0KitState = {
   }>;
   detectedAgents: Partial<Record<AgentId, { found: boolean; path: string }>>;
   actions: Array<Record<string, string>>;
-  activeProfile?: string;
 };
 
 function defaultState(): Use0KitState {

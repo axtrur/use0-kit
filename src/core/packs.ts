@@ -23,7 +23,6 @@ function assetToResource(asset: ExportedPackAsset): SelectorResource {
     case "subagent":
     case "hook":
     case "pack":
-    case "profile":
     case "secret":
     case "plugin":
       return resource as unknown as SelectorResource;
@@ -103,6 +102,9 @@ export async function installPack(fromRoot: string, packId: string, toRoot: stri
     const resource = findBySelector(sourceManifest, selector);
     if (!resource) {
       throw new Error(`Missing pack resource: ${selector}`);
+    }
+    if (selector !== `pack:${pack.id}` && "originPack" in resource) {
+      resource.originPack = pack.id;
     }
     if (applySelectorToManifest(targetManifest, selector, resource)) {
       installed += 1;

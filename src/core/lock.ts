@@ -23,7 +23,7 @@ type LockState = {
       resolvedUrl?: string;
       resolvedRef?: string;
       originScope?: string;
-      originProfile?: string;
+      originPack?: string;
       scopeMode?: string;
       targets?: string[];
       materialized?: Record<string, string | string[]>;
@@ -71,8 +71,8 @@ export async function explainLock(root: string): Promise<string> {
       if (state.originScope) {
         parts.push(`originScope=${state.originScope}`);
       }
-      if (state.originProfile) {
-        parts.push(`originProfile=${state.originProfile}`);
+      if (state.originPack) {
+        parts.push(`originPack=${state.originPack}`);
       }
       if (state.scopeMode) {
         parts.push(`scopeMode=${state.scopeMode}`);

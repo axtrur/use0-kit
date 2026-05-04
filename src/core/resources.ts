@@ -3,7 +3,6 @@ import { join } from "node:path";
 
 import { loadManifest, saveManifest } from "./manifest.js";
 import { resolveSourcePath } from "./source-resolver.js";
-import { loadState, saveState } from "./state.js";
 import type {
   CommandResource,
   HookResource,
@@ -11,8 +10,6 @@ import type {
   McpResource,
   PackResource,
   PluginResource,
-  ProfileResource,
-  ResourceTarget,
   SecretResource,
   SkillResource,
   SubagentResource
@@ -96,7 +93,7 @@ export async function addInstruction(
     targets: input.targets,
     provenance: input.provenance,
     originScope: input.originScope,
-    originProfile: input.originProfile,
+    originPack: input.originPack,
     syncMode: input.syncMode,
     pinnedDigest: input.pinnedDigest
   });
@@ -350,127 +347,4 @@ export async function removePack(root: string, packId: string): Promise<void> {
   const manifest = await loadManifest(root);
   manifest.packs = manifest.packs.filter((item) => item.id !== packId);
   await saveManifest(root, manifest);
-}
-
-export async function createProfile(
-  root: string,
-  input: { id: string; name: string; defaultTargets?: ResourceTarget[] },
-  options?: MutationOptions
-): Promise<void> {
-  const manifest = await loadManifest(root);
-  assertCanReplaceResource(manifest, "profile", input.id, manifest.profiles.some((item) => item.id === input.id), options);
-  manifest.profiles = manifest.profiles.filter((item) => item.id !== input.id);
-  manifest.profiles.push({ ...input, exports: [] });
-  await saveManifest(root, manifest);
-}
-
-export async function addProfileExport(root: string, profileId: string, selector: string): Promise<void> {
-  const manifest = await loadManifest(root);
-  const profile = manifest.profiles.find((item) => item.id === profileId);
-  if (!profile) throw new Error(`Unknown profile:${profileId}`);
-  if (!profile.exports.includes(selector)) {
-    profile.exports.push(selector);
-  }
-  await saveManifest(root, manifest);
-}
-
-export async function getProfile(root: string, profileId: string): Promise<ProfileResource> {
-  const manifest = await loadManifest(root);
-  const profile = manifest.profiles.find((item) => item.id === profileId);
-  if (!profile) throw new Error(`Unknown profile:${profileId}`);
-  return profile;
-}
-
-export async function listProfiles(root: string): Promise<ProfileResource[]> {
-  return (await loadManifest(root)).profiles;
-}
-
-export async function removeProfile(root: string, profileId: string): Promise<void> {
-  const manifest = await loadManifest(root);
-  manifest.profiles = manifest.profiles.filter((item) => item.id !== profileId);
-  await saveManifest(root, manifest);
-}
-
-export async function exportProfile(root: string, profileId: string, outPath: string): Promise<void> {
-  const profile = await getProfile(root, profileId);
-  if (outPath.endsWith(".toml")) {
-    const lines = [
-      "[profile]",
-      `id = "${profile.id}"`,
-      `name = "${profile.name}"`,
-      `exports = [${profile.exports.map((item) => `"${item}"`).join(", ")}]`
-    ];
-    if (profile.defaultTargets?.length) {
-      lines.push(`default_targets = [${profile.defaultTargets.map((item) => `"${item}"`).join(", ")}]`);
-    }
-    await writeFile(outPath, lines.join("\n") + "\n", "utf8");
-    return;
-  }
-  await writeFile(outPath, JSON.stringify(profile, null, 2) + "\n", "utf8");
-}
-
-export async function importProfile(root: string, sourcePath: string): Promise<void> {
-  const raw = await readFile(sourcePath, "utf8");
-  const imported = sourcePath.endsWith(".toml") ? parseProfileToml(raw) : (JSON.parse(raw) as ProfileResource);
-  const manifest = await loadManifest(root);
-  manifest.profiles = manifest.profiles.filter((item) => item.id !== imported.id);
-  manifest.profiles.push(imported);
-  await saveManifest(root, manifest);
-}
-
-export async function useProfile(root: string, profileId: string): Promise<void> {
-  const state = await loadState(root);
-  state.activeProfile = profileId;
-  await saveState(root, state);
-}
-
-function parseProfileToml(content: string): ProfileResource {
-  let inProfile = false;
-  const parsed: Partial<ProfileResource> = { exports: [] };
-
-  for (const rawLine of content.split("\n")) {
-    const line = rawLine.trim();
-    if (!line || line.startsWith("#")) {
-      continue;
-    }
-    if (line === "[profile]") {
-      inProfile = true;
-      continue;
-    }
-    if (!inProfile) {
-      continue;
-    }
-    const separator = line.indexOf("=");
-    if (separator === -1) {
-      continue;
-    }
-    const key = line.slice(0, separator).trim();
-    const value = line.slice(separator + 1).trim();
-    if (key === "id") parsed.id = parseTomlString(value);
-    if (key === "name") parsed.name = parseTomlString(value);
-    if (key === "exports") parsed.exports = parseTomlStringArray(value);
-    if (key === "default_targets") parsed.defaultTargets = parseTomlStringArray(value) as ResourceTarget[];
-  }
-
-  return {
-    id: parsed.id ?? "",
-    name: parsed.name ?? "",
-    exports: parsed.exports ?? [],
-    defaultTargets: parsed.defaultTargets
-  };
-}
-
-function parseTomlString(value: string): string {
-  return value.replace(/^"/, "").replace(/"$/, "");
-}
-
-function parseTomlStringArray(value: string): string[] {
-  const inner = value.trim().replace(/^\[/, "").replace(/\]$/, "").trim();
-  if (!inner) {
-    return [];
-  }
-  return inner
-    .split(",")
-    .map((item) => parseTomlString(item.trim()))
-    .filter(Boolean);
 }
