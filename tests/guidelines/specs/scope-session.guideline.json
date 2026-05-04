@@ -1,0 +1,158 @@
+{
+  "name": "scope-session",
+  "doc": "docs/guidelines/GUIDELINE_SCOPE_SESSION.md",
+  "rootPrefix": "use0-kit-guideline-session-",
+  "env": {
+    "isolatedXdg": true
+  },
+  "vars": {
+    "project": "${root}/project"
+  },
+  "steps": [
+    {
+      "id": "create-project",
+      "mkdir": ["${project}"]
+    },
+    {
+      "id": "project-init",
+      "cwd": "${project}",
+      "run": ["scope", "init", "--scope", "project", "--agents", "codex,claude-code"]
+    },
+    {
+      "id": "project-baseline",
+      "cwd": "${project}",
+      "run": [
+        "instruction",
+        "set-section",
+        "Testing",
+        "--body",
+        "Project baseline testing.",
+        "--targets",
+        "codex,claude-code"
+      ],
+      "assert": {
+        "filesExist": [".use0-kit/sources/instructions/testing.md"]
+      }
+    },
+    {
+      "id": "project-apply",
+      "cwd": "${project}",
+      "run": ["apply", "--agent", "codex,claude-code", "--verify"],
+      "assert": {
+        "fileContains": {
+          "AGENTS.md": ["Project baseline testing."],
+          "CLAUDE.md": ["Project baseline testing."]
+        }
+      }
+    },
+    {
+      "id": "session-init",
+      "cwd": "${project}",
+      "run": ["scope", "init", "--scope", "session", "--agents", "codex"],
+      "assert": {
+        "stdoutContains": ["Initialized session scope"],
+        "filesExist": [".use0-kit/session/use0-kit.toml"],
+        "dirsExist": [".use0-kit/session/.use0-kit/sources"]
+      }
+    },
+    {
+      "id": "session-instruction",
+      "cwd": "${project}",
+      "run": [
+        "instruction",
+        "set-section",
+        "SessionTesting",
+        "--body",
+        "Session-only testing marker.",
+        "--targets",
+        "codex",
+        "--scope",
+        "session"
+      ],
+      "assert": {
+        "filesExist": [".use0-kit/session/.use0-kit/sources/instructions/sessiontesting.md"]
+      }
+    },
+    {
+      "id": "session-command",
+      "cwd": "${project}",
+      "run": ["command", "add", "session-check", "--content", "echo session-only", "--targets", "codex", "--scope", "session"],
+      "assert": {
+        "filesExist": [".use0-kit/session/.use0-kit/sources/commands/session-check.md"]
+      }
+    },
+    {
+      "id": "session-list",
+      "cwd": "${project}",
+      "run": ["list", "--scope", "session"],
+      "assert": {
+        "stdoutContains": ["instruction:sessiontesting", "command:session-check"]
+      }
+    },
+    {
+      "id": "project-list-before-promotion",
+      "cwd": "${project}",
+      "run": ["list", "--scope", "project"],
+      "assert": {
+        "stdoutContains": ["instruction:testing"],
+        "stdoutNotContains": ["command:session-check"]
+      }
+    },
+    {
+      "id": "session-apply",
+      "cwd": "${project}",
+      "run": ["apply", "--scope", "session", "--agent", "codex", "--verify"],
+      "assert": {
+        "filesExist": [".use0-kit/session/AGENTS.md", ".use0-kit/session/.codex/commands/session-check.md"],
+        "fileContains": {
+          ".use0-kit/session/AGENTS.md": ["Session-only testing marker."],
+          "AGENTS.md": ["Project baseline testing."]
+        },
+        "fileNotContains": {
+          "AGENTS.md": ["Session-only testing marker."]
+        }
+      }
+    },
+    {
+      "id": "session-doctor",
+      "cwd": "${project}",
+      "run": ["doctor", "--scope", "session"],
+      "assert": {
+        "stdoutContains": ["manifest-parse: ok", "materialized-graph: ok", "policy: ok"]
+      }
+    },
+    {
+      "id": "session-diff",
+      "cwd": "${project}",
+      "run": ["diff", "--scope", "session", "--materialized"],
+      "assert": {
+        "stdoutContains": ["materialized: clean"]
+      }
+    },
+    {
+      "id": "promote-session-command",
+      "cwd": "${project}",
+      "run": ["scope", "sync", "--from", "session", "--to", "project", "command:session-check", "--mode", "fork", "--apply", "--agent", "codex"],
+      "assert": {
+        "stdoutContains": ["Synced 1 resource"],
+        "filesExist": [".codex/commands/session-check.md"]
+      }
+    },
+    {
+      "id": "project-list-after-promotion",
+      "cwd": "${project}",
+      "run": ["list", "--scope", "project"],
+      "assert": {
+        "stdoutContains": ["command:session-check"]
+      }
+    },
+    {
+      "id": "project-diff",
+      "cwd": "${project}",
+      "run": ["diff", "--materialized"],
+      "assert": {
+        "stdoutContains": ["materialized: clean"]
+      }
+    }
+  ]
+}

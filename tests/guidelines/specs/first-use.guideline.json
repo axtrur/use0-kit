@@ -1,0 +1,230 @@
+{
+  "name": "first-use",
+  "doc": "docs/guidelines/GUIDELINE_FIRST_USE.md",
+  "rootPrefix": "use0-kit-guideline-first-use-",
+  "env": {
+    "isolatedXdg": true
+  },
+  "vars": {
+    "project": "${root}/project"
+  },
+  "steps": [
+    {
+      "id": "create-project",
+      "mkdir": ["${project}"]
+    },
+    {
+      "id": "init-project",
+      "cwd": "${project}",
+      "run": ["scope", "init", "--scope", "project", "--agents", "codex,claude-code"],
+      "assert": {
+        "stdoutContains": ["Initialized project scope"],
+        "filesExist": ["use0-kit.toml", "use0-kit.lock.json"],
+        "dirsExist": [".use0-kit/sources/skills", ".use0-kit/store/skills"]
+      }
+    },
+    {
+      "id": "add-resources",
+      "cwd": "${project}",
+      "run": ["skill", "init", "repo-conventions", "--targets", "codex,claude-code"],
+      "assert": {
+        "stdoutContains": ["Initialized skill:repo-conventions"],
+        "filesExist": [".use0-kit/sources/skills/repo-conventions/SKILL.md"],
+        "fileContains": {
+          "use0-kit.toml": ["[[skills]]", ".use0-kit/sources/skills/repo-conventions"]
+        }
+      }
+    },
+    {
+      "id": "add-instruction",
+      "cwd": "${project}",
+      "run": [
+        "instruction",
+        "set-section",
+        "Testing",
+        "--body",
+        "Run npm test and npm run build before PRs.",
+        "--targets",
+        "codex,claude-code"
+      ],
+      "assert": {
+        "filesExist": [".use0-kit/sources/instructions/testing.md"],
+        "fileContains": {
+          "use0-kit.toml": ["[[instructions]]"]
+        }
+      }
+    },
+    {
+      "id": "add-command",
+      "cwd": "${project}",
+      "run": ["command", "add", "repo-check", "--content", "npm test && npm run build", "--targets", "codex"],
+      "assert": {
+        "filesExist": [".use0-kit/sources/commands/repo-check.md"],
+        "fileContains": {
+          "use0-kit.toml": ["[[commands]]"]
+        }
+      }
+    },
+    {
+      "id": "add-subagent",
+      "cwd": "${project}",
+      "run": [
+        "subagent",
+        "add",
+        "reviewer",
+        "--content",
+        "Review code for regressions and missing tests.",
+        "--targets",
+        "claude-code"
+      ],
+      "assert": {
+        "filesExist": [".use0-kit/sources/subagents/reviewer.md"],
+        "fileContains": {
+          "use0-kit.toml": ["[[subagents]]"]
+        }
+      }
+    },
+    {
+      "id": "add-hook",
+      "cwd": "${project}",
+      "run": ["hook", "add", "pre-apply", "--content", "echo before-apply", "--targets", "codex"],
+      "assert": {
+        "filesExist": [".use0-kit/sources/hooks/pre-apply.sh"],
+        "fileContains": {
+          "use0-kit.toml": ["[[hooks]]"]
+        }
+      }
+    },
+    {
+      "id": "add-secret",
+      "cwd": "${project}",
+      "run": ["secret", "add", "--id", "openai", "--env", "OPENAI_API_KEY", "--targets", "codex"],
+      "assert": {
+        "fileContains": {
+          "use0-kit.toml": ["[[secrets]]", "OPENAI_API_KEY"]
+        }
+      }
+    },
+    {
+      "id": "create-pack",
+      "cwd": "${project}",
+      "run": ["pack", "init", "demo", "--name", "local/demo", "--version", "0.1.0"],
+      "assert": {
+        "stdoutContains": ["Initialized pack:demo"],
+        "fileContains": {
+          "use0-kit.toml": ["[[packs]]"]
+        }
+      }
+    },
+    {
+      "id": "pack-add-skill",
+      "cwd": "${project}",
+      "run": ["pack", "add", "demo", "skill:repo-conventions"],
+      "assert": {
+        "fileContains": {
+          "use0-kit.toml": ["skill:repo-conventions"]
+        }
+      }
+    },
+    {
+      "id": "pack-add-instruction",
+      "cwd": "${project}",
+      "run": ["pack", "add", "demo", "instruction:testing"],
+      "assert": {
+        "fileContains": {
+          "use0-kit.toml": ["instruction:testing"]
+        }
+      }
+    },
+    {
+      "id": "pack-add-command",
+      "cwd": "${project}",
+      "run": ["pack", "add", "demo", "command:repo-check"],
+      "assert": {
+        "fileContains": {
+          "use0-kit.toml": ["command:repo-check"]
+        }
+      }
+    },
+    {
+      "id": "pack-add-subagent",
+      "cwd": "${project}",
+      "run": ["pack", "add", "demo", "subagent:reviewer"],
+      "assert": {
+        "fileContains": {
+          "use0-kit.toml": ["subagent:reviewer"]
+        }
+      }
+    },
+    {
+      "id": "plan",
+      "cwd": "${project}",
+      "run": ["plan", "--agent", "codex,claude-code"],
+      "assert": {
+        "stdoutContains": ["STORE", "LINK"]
+      }
+    },
+    {
+      "id": "apply",
+      "cwd": "${project}",
+      "run": ["apply", "--agent", "codex,claude-code", "--verify"],
+      "assert": {
+        "stdoutContains": ["Applied"],
+        "filesExist": [
+          ".use0-kit/store/skills/repo-conventions/SKILL.md",
+          ".use0-kit/store/commands/repo-check.md",
+          ".codex/skills/repo-conventions/SKILL.md",
+          ".codex/commands/repo-check.md",
+          ".claude/skills/repo-conventions/SKILL.md",
+          ".claude/subagents/reviewer.md",
+          "AGENTS.md",
+          "CLAUDE.md"
+        ],
+        "fileContains": {
+          "AGENTS.md": ["Run npm test and npm run build before PRs."],
+          "CLAUDE.md": ["Run npm test and npm run build before PRs."]
+        }
+      }
+    },
+    {
+      "id": "hook-test",
+      "cwd": "${project}",
+      "run": ["hook", "test", "pre-apply"],
+      "assert": {
+        "stdoutContains": ["before-apply"]
+      }
+    },
+    {
+      "id": "secret-env",
+      "cwd": "${project}",
+      "run": ["secret", "env", "openai"],
+      "assert": {
+        "stdoutContains": ["OPENAI_API_KEY"]
+      }
+    },
+    {
+      "id": "doctor",
+      "cwd": "${project}",
+      "run": ["doctor"],
+      "assert": {
+        "stdoutContains": ["manifest-parse: ok", "materialized-graph: ok", "policy: ok"]
+      }
+    },
+    {
+      "id": "lock-verify",
+      "cwd": "${project}",
+      "run": ["lock", "verify"],
+      "assert": {
+        "stdoutContains": ["lock ok"]
+      }
+    },
+    {
+      "id": "materialized-clean",
+      "cwd": "${project}",
+      "run": ["diff", "--materialized"],
+      "assert": {
+        "stdoutContains": ["materialized: clean"]
+      }
+    }
+  ]
+}

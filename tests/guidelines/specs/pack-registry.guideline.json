@@ -1,0 +1,189 @@
+{
+  "name": "pack-registry",
+  "doc": "docs/guidelines/GUIDELINE_PACK_REGISTRY.md",
+  "rootPrefix": "use0-kit-guideline-pack-registry-",
+  "env": {
+    "isolatedXdg": true
+  },
+  "vars": {
+    "producer": "${root}/producer",
+    "consumer": "${root}/consumer",
+    "registry": "${root}/registry.json"
+  },
+  "steps": [
+    {
+      "id": "create-roots",
+      "mkdir": ["${producer}", "${consumer}"]
+    },
+    {
+      "id": "init-producer",
+      "cwd": "${producer}",
+      "run": ["scope", "init", "--scope", "project", "--agents", "codex"]
+    },
+    {
+      "id": "producer-skill",
+      "cwd": "${producer}",
+      "run": ["skill", "init", "repo-conventions", "--targets", "codex"],
+      "assert": {
+        "filesExist": [".use0-kit/sources/skills/repo-conventions/SKILL.md"]
+      }
+    },
+    {
+      "id": "producer-command",
+      "cwd": "${producer}",
+      "run": ["command", "add", "repo-check", "--content", "npm test", "--targets", "codex"],
+      "assert": {
+        "filesExist": [".use0-kit/sources/commands/repo-check.md"]
+      }
+    },
+    {
+      "id": "pack-init",
+      "cwd": "${producer}",
+      "run": ["pack", "init", "agent-dev", "--name", "local/agent-dev", "--version", "0.1.0"]
+    },
+    {
+      "id": "pack-add-skill",
+      "cwd": "${producer}",
+      "run": ["pack", "add", "agent-dev", "skill:repo-conventions"]
+    },
+    {
+      "id": "pack-add-command",
+      "cwd": "${producer}",
+      "run": ["pack", "add", "agent-dev", "command:repo-check"],
+      "assert": {
+        "fileContains": {
+          "use0-kit.toml": ["skill:repo-conventions", "command:repo-check"]
+        }
+      }
+    },
+    {
+      "id": "create-registry",
+      "cwd": "${producer}",
+      "writeJson": {
+        "path": "${registry}",
+        "value": {
+          "items": []
+        }
+      },
+      "assert": {
+        "filesExist": ["${registry}"]
+      }
+    },
+    {
+      "id": "registry-add",
+      "cwd": "${producer}",
+      "run": ["registry", "add", "local", "${registry}"],
+      "assert": {
+        "stdoutContains": ["Added registry:local"]
+      }
+    },
+    {
+      "id": "registry-login",
+      "cwd": "${producer}",
+      "run": ["registry", "login", "local"],
+      "assert": {
+        "stdoutContains": ["Logged into registry:local"]
+      }
+    },
+    {
+      "id": "publish-skill",
+      "cwd": "${producer}",
+      "run": ["publish", "skill:repo-conventions", "--registry", "local"],
+      "assert": {
+        "stdoutContains": ["Published skill:repo-conventions"],
+        "fileContains": {
+          "${registry}": ["repo-conventions"]
+        }
+      }
+    },
+    {
+      "id": "publish-command",
+      "cwd": "${producer}",
+      "run": ["publish", "command:repo-check", "--registry", "local"],
+      "assert": {
+        "stdoutContains": ["Published command:repo-check"],
+        "fileContains": {
+          "${registry}": ["repo-check"]
+        }
+      }
+    },
+    {
+      "id": "publish-pack",
+      "cwd": "${producer}",
+      "run": ["pack", "publish", "agent-dev", "--registry", "local"],
+      "assert": {
+        "stdoutContains": ["Published pack:agent-dev"],
+        "fileContains": {
+          "${registry}": ["agent-dev"]
+        }
+      }
+    },
+    {
+      "id": "producer-search",
+      "cwd": "${producer}",
+      "run": ["search", "agent"],
+      "assert": {
+        "stdoutContains": ["pack:agent-dev"]
+      }
+    },
+    {
+      "id": "init-consumer",
+      "cwd": "${consumer}",
+      "run": ["scope", "init", "--scope", "project", "--agents", "codex"]
+    },
+    {
+      "id": "consumer-registry-add",
+      "cwd": "${consumer}",
+      "run": ["registry", "add", "local", "${registry}"]
+    },
+    {
+      "id": "consumer-registry-sync",
+      "cwd": "${consumer}",
+      "run": ["registry", "sync", "local"],
+      "assert": {
+        "stdoutContains": ["Synced 1 registry"]
+      }
+    },
+    {
+      "id": "consumer-install-pack",
+      "cwd": "${consumer}",
+      "run": ["install", "pack:agent-dev", "--registry", "local", "--apply", "--agent", "codex", "--verify"],
+      "assert": {
+        "stdoutContains": ["Installed pack:agent-dev"],
+        "filesExist": [".codex/skills/repo-conventions/SKILL.md", ".codex/commands/repo-check.md"]
+      }
+    },
+    {
+      "id": "consumer-list",
+      "cwd": "${consumer}",
+      "run": ["list", "pack:agent-dev", "skill:repo-conventions", "command:repo-check"],
+      "assert": {
+        "stdoutContains": ["pack:agent-dev", "skill:repo-conventions", "command:repo-check"]
+      }
+    },
+    {
+      "id": "consumer-doctor",
+      "cwd": "${consumer}",
+      "run": ["doctor"],
+      "assert": {
+        "stdoutContains": ["manifest-parse: ok", "materialized-graph: ok"]
+      }
+    },
+    {
+      "id": "consumer-lock",
+      "cwd": "${consumer}",
+      "run": ["lock", "verify"],
+      "assert": {
+        "stdoutContains": ["lock ok"]
+      }
+    },
+    {
+      "id": "consumer-materialized",
+      "cwd": "${consumer}",
+      "run": ["diff", "--materialized"],
+      "assert": {
+        "stdoutContains": ["materialized: clean"]
+      }
+    }
+  ]
+}

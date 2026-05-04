@@ -1,0 +1,127 @@
+{
+  "name": "scope-layering",
+  "doc": "docs/guidelines/GUIDELINE_SCOPE_LAYERING.md",
+  "rootPrefix": "use0-kit-guideline-layering-",
+  "env": {
+    "isolatedXdg": true
+  },
+  "vars": {
+    "globalRoot": "${root}/xdg-data/use0-kit/global",
+    "workspace": "${root}/workspace",
+    "project": "${workspace}/apps/web"
+  },
+  "steps": [
+    {
+      "id": "create-roots",
+      "mkdir": ["${globalRoot}", "${workspace}", "${project}"]
+    },
+    {
+      "id": "init-global",
+      "cwd": "${globalRoot}",
+      "run": ["scope", "init", "--scope", "global", "--agents", "codex"],
+      "assert": {
+        "filesExist": ["use0-kit.toml"]
+      }
+    },
+    {
+      "id": "global-skill",
+      "cwd": "${globalRoot}",
+      "run": ["skill", "init", "global-review", "--targets", "codex"],
+      "assert": {
+        "filesExist": [".use0-kit/sources/skills/global-review/SKILL.md"]
+      }
+    },
+    {
+      "id": "init-workspace",
+      "cwd": "${workspace}",
+      "run": ["scope", "init", "--scope", "workspace", "--agents", "codex"],
+      "assert": {
+        "filesExist": ["use0-kit.toml"]
+      }
+    },
+    {
+      "id": "workspace-instruction",
+      "cwd": "${workspace}",
+      "run": [
+        "instruction",
+        "set-section",
+        "WorkspaceRules",
+        "--body",
+        "Workspace shared rules.",
+        "--targets",
+        "codex"
+      ],
+      "assert": {
+        "filesExist": [".use0-kit/sources/instructions/workspacerules.md"]
+      }
+    },
+    {
+      "id": "init-project",
+      "cwd": "${project}",
+      "run": ["scope", "init", "--scope", "project", "--agents", "codex"],
+      "assert": {
+        "filesExist": ["use0-kit.toml"]
+      }
+    },
+    {
+      "id": "project-command",
+      "cwd": "${project}",
+      "run": ["command", "add", "project-check", "--content", "npm test", "--targets", "codex"],
+      "assert": {
+        "filesExist": [".use0-kit/sources/commands/project-check.md"]
+      }
+    },
+    {
+      "id": "effective-list",
+      "cwd": "${project}",
+      "run": ["list", "--effective", "--agent", "codex"],
+      "assert": {
+        "stdoutContains": ["skill:global-review", "instruction:workspacerules", "command:project-check"]
+      }
+    },
+    {
+      "id": "explain-global",
+      "cwd": "${project}",
+      "run": ["scope", "explain", "skill:global-review", "--agent", "codex"],
+      "assert": {
+        "stdoutContains": ["global wins"]
+      }
+    },
+    {
+      "id": "pin-global-to-project",
+      "cwd": "${project}",
+      "run": ["scope", "sync", "--from", "global", "--to", "project", "skill:global-review", "--mode", "pin", "--apply", "--agent", "codex"],
+      "assert": {
+        "stdoutContains": ["Synced 1 resource"],
+        "filesExist": [".codex/skills/global-review/SKILL.md"],
+        "fileContains": {
+          "use0-kit.toml": ["origin_scope = \"global\"", "scope_mode = \"pin\""]
+        }
+      }
+    },
+    {
+      "id": "doctor",
+      "cwd": "${project}",
+      "run": ["doctor"],
+      "assert": {
+        "stdoutContains": ["manifest-parse: ok", "materialized-graph: ok"]
+      }
+    },
+    {
+      "id": "lock",
+      "cwd": "${project}",
+      "run": ["lock", "verify"],
+      "assert": {
+        "stdoutContains": ["lock ok"]
+      }
+    },
+    {
+      "id": "materialized",
+      "cwd": "${project}",
+      "run": ["diff", "--materialized"],
+      "assert": {
+        "stdoutContains": ["materialized: clean"]
+      }
+    }
+  ]
+}

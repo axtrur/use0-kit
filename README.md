@@ -4,7 +4,7 @@
 
 It gives you one vendor-neutral resource graph for skills, MCP servers, instructions, commands, subagents, hooks, packs, secrets, and plugins, then materializes that graph into the native directories/config files used by supported agents.
 
-For a command-by-command first-use walkthrough, see [GUIDELINE.md](GUIDELINE.md).
+For operating guidance, see [BEST_PRACTICE.md](BEST_PRACTICE.md). For copy-pasteable validation workflows, see [docs/guidelines/](docs/guidelines/).
 
 Supported agent targets:
 
@@ -17,7 +17,7 @@ Supported agent targets:
 
 `use0-kit` manages these resource types:
 
-- `skill`: directory-based agent skills, usually with `SKILL.md`.
+- `skill`: directory-based agent skills; the source must be a folder containing `SKILL.md`.
 - `mcp`: MCP server definitions, including `stdio`, `http`, and `npm:` convenience inputs.
 - `instruction`: markdown source files rendered into agent instruction files.
 - `command`: reusable markdown command files.
@@ -74,7 +74,7 @@ npm test
 Run the CLI from the built entrypoint:
 
 ```bash
-node dist/cli.js --help
+node dist/src/cli.js scope list
 ```
 
 During development, the package exposes the binary name `use0-kit` after build/install:
@@ -93,6 +93,7 @@ Typical project files:
 - `use0-kit.lock.json`: effective resource lock state.
 - `.use0-kit/state.json`: apply state, backups, and detected agents.
 - `.use0-kit/materialized.json`: last materialized graph.
+- `.use0-kit/sources/`: use0-kit-managed editable source files.
 - `.use0-kit/store/`: canonical resource store by default.
 - `.agents/`: vendor-neutral project-owned editable resources.
 
@@ -118,14 +119,10 @@ Initialize with a starter pack:
 use0-kit init --scope project --with frontend --agents codex,cursor --yes
 ```
 
-Add a local skill:
+Scaffold a managed local skill:
 
 ```bash
-mkdir -p skills/repo-conventions
-printf '# Repo Conventions\n\nUse project rules.\n' > skills/repo-conventions/SKILL.md
-
-use0-kit skill add path:skills/repo-conventions \
-  --id repo-conventions \
+use0-kit skill init repo-conventions \
   --targets codex,cursor
 ```
 
@@ -147,6 +144,13 @@ Inspect health:
 use0-kit doctor
 use0-kit diff --materialized
 ```
+
+For broader scope and registry validation, use:
+
+- [First Use](docs/guidelines/GUIDELINE_FIRST_USE.md)
+- [Scope Layering](docs/guidelines/GUIDELINE_SCOPE_LAYERING.md)
+- [Session Scope](docs/guidelines/GUIDELINE_SCOPE_SESSION.md)
+- [Pack And Registry](docs/guidelines/GUIDELINE_PACK_REGISTRY.md)
 
 ## Common Workflows
 
@@ -188,6 +192,8 @@ Explain why a resource is effective:
 ```bash
 use0-kit scope explain skill:web-design --scope project --agent codex
 ```
+
+See [BEST_PRACTICE.md](BEST_PRACTICE.md) for the recommended `global` / `user` / `workspace` / `project` / `session` ownership model.
 
 ### Use Packs
 
