@@ -1,8 +1,8 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { access, mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { isAbsolute, join, resolve } from "node:path";
 
 import { loadManifest, saveManifest } from "./manifest.js";
-import { resolveSourcePath } from "./source-resolver.js";
+import { parseSourceReference, resolveSourcePath } from "./source-resolver.js";
 import type {
   CommandResource,
   HookResource,
@@ -18,6 +18,16 @@ import type {
 type MutationOptions = {
   force?: boolean;
 };
+
+type ManagedSourceKind = "skills" | "commands" | "subagents" | "instructions" | "hooks";
+
+export function managedSourceDir(root: string, kind: ManagedSourceKind): string {
+  return join(root, ".use0-kit", "sources", kind);
+}
+
+export function managedSkillSourceDir(root: string, id: string): string {
+  return join(managedSourceDir(root, "skills"), id);
+}
 
 function scopeLabel(manifest: { scope?: { level?: string }; defaultScope?: string }): string {
   return `${manifest.scope?.level ?? manifest.defaultScope ?? "project"} scope`;
@@ -35,9 +45,36 @@ function assertCanReplaceResource(
   }
 }
 
+export async function assertValidSkillSource(root: string, skill: SkillResource): Promise<void> {
+  const parsed = parseSourceReference(skill.source);
+  if (parsed.scheme === "inline" || parsed.scheme === "url" || parsed.scheme === "well-known" || parsed.scheme === "npm") {
+    throw new Error(`Skill source must be a directory with SKILL.md: ${skill.source}`);
+  }
+  if (parsed.scheme !== "path") {
+    return;
+  }
+
+  const sourcePath = isAbsolute(parsed.path) ? parsed.path : resolve(root, parsed.path);
+  let sourceStat;
+  try {
+    sourceStat = await stat(sourcePath);
+  } catch {
+    throw new Error(`Skill source must be a directory with SKILL.md: ${skill.source}`);
+  }
+  if (!sourceStat.isDirectory()) {
+    throw new Error(`Skill source must be a directory with SKILL.md: ${skill.source}`);
+  }
+  try {
+    await access(join(sourcePath, "SKILL.md"));
+  } catch {
+    throw new Error(`Skill source directory is missing SKILL.md: ${skill.source}`);
+  }
+}
+
 export async function addSkill(root: string, skill: SkillResource, options?: MutationOptions): Promise<void> {
   const manifest = await loadManifest(root);
   assertCanReplaceResource(manifest, "skill", skill.id, manifest.skills.some((item) => item.id === skill.id), options);
+  await assertValidSkillSource(root, skill);
   manifest.skills = manifest.skills.filter((item) => item.id !== skill.id);
   manifest.skills.push(skill);
   await saveManifest(root, manifest);
@@ -135,7 +172,7 @@ async function writeManagedResource(
   id: string,
   content: string
 ) {
-  const dir = join(root, ".use0-kit", "resources", kind);
+  const dir = managedSourceDir(root, kind);
   await mkdir(dir, { recursive: true });
   const path = join(dir, `${id}.md`);
   await writeFile(path, content, "utf8");
@@ -143,7 +180,7 @@ async function writeManagedResource(
 }
 
 async function writeManagedHook(root: string, id: string, content: string) {
-  const dir = join(root, ".use0-kit", "resources", "hooks");
+  const dir = managedSourceDir(root, "hooks");
   await mkdir(dir, { recursive: true });
   const path = join(dir, `${id}.sh`);
   await writeFile(path, content, "utf8");

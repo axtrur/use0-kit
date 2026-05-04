@@ -147,7 +147,7 @@ export async function buildPlan(input: {
     await Promise.all(
       input.manifest.skills.map(async (skill) => {
         const storePath = join(storeRoot, "skills", skill.id);
-        const sourcePath = await resolveSkillSourcePath(input.root, skill.source, skill.id);
+        const sourcePath = await resolveSkillSourcePath(input.root, skill.source);
         const actions: MaterializationPlan["actions"] = [
           {
             kind: "store-skill",

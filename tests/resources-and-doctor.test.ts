@@ -60,7 +60,7 @@ describe("resource mutations and doctor", () => {
     expect(manifest.instructions).toEqual([
       expect.objectContaining({
         id: "testing",
-        source: expect.stringContaining(".use0-kit/resources/instructions/testing.md")
+        source: expect.stringContaining(".use0-kit/sources/instructions/testing.md")
       })
     ]);
   });
@@ -283,9 +283,12 @@ describe("resource mutations and doctor", () => {
       command: "definitely-missing-command",
       targets: ["codex"]
     });
+    const skillDir = join(root, ".use0-kit", "sources", "skills", "repo-conventions");
+    await mkdir(skillDir, { recursive: true });
+    await writeFile(join(skillDir, "SKILL.md"), "# Local Skill\n", "utf8");
     await addSkill(root, {
       id: "repo-conventions",
-      source: "inline:Local%20skill",
+      source: `path:${skillDir}`,
       targets: ["codex"]
     });
 

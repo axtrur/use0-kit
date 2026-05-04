@@ -12,6 +12,7 @@ import {
   summarizeSelectorResource
 } from "./resource-graph.js";
 import { syncScopesDetailed } from "./reconciliation.js";
+import { managedSourceDir } from "./resources.js";
 import { activeScopeRoots, getScopeRoots } from "./scope-locations.js";
 import { targetMatches } from "./targets.js";
 import type {
@@ -69,10 +70,11 @@ export async function initScope(options: InitScopeOptions): Promise<void> {
     await mkdir(join(scopeRoot, ".agents", "plugins"), { recursive: true });
   }
   await mkdir(join(scopeRoot, ".use0-kit", "store", "skills"), { recursive: true });
-  await mkdir(join(scopeRoot, ".use0-kit", "resources", "instructions"), { recursive: true });
-  await mkdir(join(scopeRoot, ".use0-kit", "resources", "commands"), { recursive: true });
-  await mkdir(join(scopeRoot, ".use0-kit", "resources", "subagents"), { recursive: true });
-  await mkdir(join(scopeRoot, ".use0-kit", "resources", "hooks"), { recursive: true });
+  await mkdir(managedSourceDir(scopeRoot, "skills"), { recursive: true });
+  await mkdir(managedSourceDir(scopeRoot, "instructions"), { recursive: true });
+  await mkdir(managedSourceDir(scopeRoot, "commands"), { recursive: true });
+  await mkdir(managedSourceDir(scopeRoot, "subagents"), { recursive: true });
+  await mkdir(managedSourceDir(scopeRoot, "hooks"), { recursive: true });
   await mkdir(join(scopeRoot, ".use0-kit", "backups"), { recursive: true });
   await saveManifest(scopeRoot, manifest);
   await ensureLockfile(scopeRoot);

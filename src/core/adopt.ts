@@ -3,6 +3,7 @@ import { join } from "node:path";
 
 import { AGENTS } from "./agents.js";
 import { loadManifest, saveManifest } from "./manifest.js";
+import { managedSourceDir } from "./resources.js";
 import type { AgentId, ResourceTarget } from "./types.js";
 
 type AdoptKind = "skill" | "mcp" | "instruction";
@@ -308,8 +309,9 @@ export async function adoptExisting(
     if (kinds.includes("instruction")) {
       for (const instruction of await listInstructionCandidates(root, agent).catch(() => [])) {
         const instructionId = instruction.selector.slice("instruction:".length);
-        const managedPath = join(root, ".use0-kit", "resources", "instructions", `${instructionId}.md`);
-        await mkdir(join(root, ".use0-kit", "resources", "instructions"), { recursive: true });
+        const instructionDir = managedSourceDir(root, "instructions");
+        const managedPath = join(instructionDir, `${instructionId}.md`);
+        await mkdir(instructionDir, { recursive: true });
         await writeFile(managedPath, await readFile(instruction.source, "utf8"), "utf8");
         manifest.instructions = manifest.instructions.filter(
           (item) => item.id !== instructionId

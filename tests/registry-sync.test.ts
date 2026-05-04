@@ -1,14 +1,23 @@
 import { createServer } from "node:http";
-import { access, mkdtemp, readFile, readdir, rm } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 
 import { runCli } from "../src/cli.js";
 
+async function createRegistrySkill(root: string, id: string, content: string): Promise<string> {
+  const skillDir = join(root, "registry-skills", id);
+  await mkdir(skillDir, { recursive: true });
+  await writeFile(join(skillDir, "SKILL.md"), content, "utf8");
+  return `path:${skillDir}`;
+}
+
 describe("registry sync", () => {
   test("syncs remote registry payloads into local cache for search, scoped info, and install", async () => {
     const root = await mkdtemp(join(tmpdir(), "use0-kit-registry-sync-"));
+    const officialSkillSource = await createRegistrySkill(root, "web-design", "# Remote design skill\n");
+    const internalSkillSource = await createRegistrySkill(root, "internal-web-design", "# Internal Design System\n");
     let port = 0;
     const server = createServer((req, res) => {
       if (req.url === "/registry.json") {
@@ -21,7 +30,7 @@ describe("registry sync", () => {
                 id: "web-design",
                 name: "Web Design Guidelines",
                 description: "Remote design skill",
-                source: `well-known:http://127.0.0.1:${port}`,
+                source: officialSkillSource,
                 targets: ["codex"]
               },
               {
@@ -45,11 +54,6 @@ describe("registry sync", () => {
         );
         return;
       }
-      if (req.url === "/.well-known/agent-skills") {
-        res.writeHead(200, { "content-type": "text/markdown; charset=utf-8" });
-        res.end("# Remote design skill\n");
-        return;
-      }
       if (req.url === "/internal.json") {
         res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
         res.end(
@@ -60,7 +64,7 @@ describe("registry sync", () => {
                 id: "web-design",
                 name: "Internal Design System",
                 description: "Private design skill",
-                source: "inline:internal-skill",
+                source: internalSkillSource,
                 targets: ["cursor"]
               }
             ]
@@ -90,7 +94,7 @@ describe("registry sync", () => {
       expect(allResults).toContain("skill:web-design\tWeb Design Guidelines\tofficial");
       expect(allResults).toContain("skill:web-design\tInternal Design System\tinternal");
       expect(await runCli(["registry", "list"], { cwd: root })).toContain("items=3");
-      expect(await runCli(["registry", "list"], { cwd: root })).toContain("verified=1");
+      expect(await runCli(["registry", "list"], { cwd: root })).toContain("verified=0");
       expect(await runCli(["registry", "list"], { cwd: root })).toContain("errors=1");
       expect(await runCli(["registry", "search", "design"], { cwd: root })).toContain(
         "skill:web-design\tWeb Design Guidelines\tofficial"
@@ -112,10 +116,10 @@ describe("registry sync", () => {
         "quality.score="
       );
       expect(await runCli(["registry", "info", "skill:web-design"], { cwd: root })).toContain(
-        "index.scheme=well-known"
+        "index.scheme=path"
       );
       expect(await runCli(["registry", "info", "skill:web-design"], { cwd: root })).toContain(
-        "index.verification_status=verified"
+        "index.verification_status=skipped"
       );
       expect(await runCli(["registry", "info", "hook:broken-hook"], { cwd: root })).toContain(
         "index.verification_status=error"
@@ -142,6 +146,7 @@ describe("registry sync", () => {
 
   test("uses persisted registry index for search, info, and install after cache payload removal", async () => {
     const root = await mkdtemp(join(tmpdir(), "use0-kit-registry-index-"));
+    const indexedSkillSource = await createRegistrySkill(root, "indexed-design", "# Indexed Design Skill\n");
     let port = 0;
     const server = createServer((req, res) => {
       if (req.url === "/registry.json") {
@@ -154,7 +159,7 @@ describe("registry sync", () => {
                 id: "indexed-design",
                 name: "Indexed Design Skill",
                 description: "Skill served through registry index",
-                source: `inline:${encodeURIComponent("# Indexed Design Skill\n")}`,
+                source: indexedSkillSource,
                 targets: ["codex"]
               }
             ]
@@ -198,6 +203,7 @@ describe("registry sync", () => {
 
   test("supports registry install --apply with agent filtering and verify", async () => {
     const root = await mkdtemp(join(tmpdir(), "use0-kit-registry-apply-"));
+    const webDesignSkillSource = await createRegistrySkill(root, "web-design", "# Web Design Skill\n");
     const server = createServer((req, res) => {
       if (req.url === "/registry.json") {
         res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
@@ -208,7 +214,7 @@ describe("registry sync", () => {
                 kind: "skill",
                 id: "web-design",
                 name: "Web Design Guidelines",
-                source: `inline:${encodeURIComponent("# Web Design Skill\n")}`,
+                source: webDesignSkillSource,
                 targets: ["codex", "cursor"],
                 provenance: {
                   source: "registry:official",
@@ -250,6 +256,7 @@ describe("registry sync", () => {
 
   test("supports install --apply --plan as a non-destructive registry preview", async () => {
     const root = await mkdtemp(join(tmpdir(), "use0-kit-registry-install-plan-"));
+    const webDesignSkillSource = await createRegistrySkill(root, "web-design", "# Web Design Skill\n");
     const server = createServer((req, res) => {
       if (req.url === "/registry.json") {
         res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
@@ -260,7 +267,7 @@ describe("registry sync", () => {
                 kind: "skill",
                 id: "web-design",
                 name: "Web Design Guidelines",
-                source: `inline:${encodeURIComponent("# Web Design Skill\n")}`,
+                source: webDesignSkillSource,
                 targets: ["codex"],
                 provenance: {
                   source: "registry:official",
@@ -346,6 +353,7 @@ describe("registry sync", () => {
 
   test("supports selector-style search queries like mcp:context7", async () => {
     const root = await mkdtemp(join(tmpdir(), "use0-kit-registry-selector-search-"));
+    const reactDesignSkillSource = await createRegistrySkill(root, "react-design", "# React Design\n");
     const server = createServer((req, res) => {
       if (req.url === "/registry.json") {
         res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
@@ -365,7 +373,7 @@ describe("registry sync", () => {
                 kind: "skill",
                 id: "react-design",
                 name: "React Design",
-                source: "inline:react",
+                source: reactDesignSkillSource,
                 targets: ["codex"]
               }
             ]
@@ -397,6 +405,7 @@ describe("registry sync", () => {
 
   test("supports offline registry reads from cached index while blocking remote sync", async () => {
     const root = await mkdtemp(join(tmpdir(), "use0-kit-registry-offline-"));
+    const offlineSkillSource = await createRegistrySkill(root, "offline-design", "# Offline Design Skill\n");
     const server = createServer((req, res) => {
       if (req.url === "/registry.json") {
         res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
@@ -407,7 +416,7 @@ describe("registry sync", () => {
                 kind: "skill",
                 id: "offline-design",
                 name: "Offline Design Skill",
-                source: `inline:${encodeURIComponent("# Offline Design Skill\n")}`,
+                source: offlineSkillSource,
                 targets: ["codex"]
               }
             ]
@@ -448,6 +457,8 @@ describe("registry sync", () => {
 
   test("orders registry search results by quality signals and exposes them in info", async () => {
     const root = await mkdtemp(join(tmpdir(), "use0-kit-registry-quality-"));
+    const lowSkillSource = await createRegistrySkill(root, "design-low", "# Design Starter\n");
+    const highSkillSource = await createRegistrySkill(root, "design-high", "# Design Pro\n");
     const server = createServer((req, res) => {
       if (req.url === "/registry.json") {
         res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
@@ -459,7 +470,7 @@ describe("registry sync", () => {
                 id: "design-low",
                 name: "Design Starter",
                 description: "Low-ranked design skill",
-                source: "inline:low",
+                source: lowSkillSource,
                 quality: {
                   score: 42,
                   risk: 5,
@@ -474,7 +485,7 @@ describe("registry sync", () => {
                 id: "design-high",
                 name: "Design Pro",
                 description: "High-ranked design skill",
-                source: "inline:high",
+                source: highSkillSource,
                 quality: {
                   score: 95,
                   risk: 1,
@@ -521,6 +532,7 @@ describe("registry sync", () => {
 
   test("supports install --scope for registry-backed resources", async () => {
     const root = await mkdtemp(join(tmpdir(), "use0-kit-registry-scope-install-"));
+    const webDesignSkillSource = await createRegistrySkill(root, "web-design", "# Web Design Skill\n");
     const xdgConfig = join(root, "xdg-config");
     const xdgData = join(root, "xdg-data");
     const previousConfig = process.env.XDG_CONFIG_HOME;
@@ -538,7 +550,7 @@ describe("registry sync", () => {
                 kind: "skill",
                 id: "web-design",
                 name: "Web Design Guidelines",
-                source: `inline:${encodeURIComponent("# Web Design Skill\n")}`,
+                source: webDesignSkillSource,
                 targets: ["codex"],
                 provenance: {
                   source: "registry:official",
@@ -580,6 +592,7 @@ describe("registry sync", () => {
 
   test("supports scoped registry list/search/info from outside the target root", async () => {
     const root = await mkdtemp(join(tmpdir(), "use0-kit-registry-scope-ops-"));
+    const webDesignSkillSource = await createRegistrySkill(root, "web-design", "# Web Design Skill\n");
     const xdgConfig = join(root, "xdg-config");
     const xdgData = join(root, "xdg-data");
     const previousConfig = process.env.XDG_CONFIG_HOME;
@@ -597,7 +610,7 @@ describe("registry sync", () => {
                 kind: "skill",
                 id: "web-design",
                 name: "Web Design Guidelines",
-                source: `inline:${encodeURIComponent("# Web Design Skill\n")}`,
+                source: webDesignSkillSource,
                 targets: ["codex"]
               }
             ]
@@ -690,6 +703,7 @@ describe("registry sync", () => {
 
   test("installs pack bundles from registry recursively before apply", async () => {
     const root = await mkdtemp(join(tmpdir(), "use0-kit-registry-pack-"));
+    const webDesignSkillSource = await createRegistrySkill(root, "web-design", "# Web Design Skill\n");
     const server = createServer((req, res) => {
       if (req.url === "/registry.json") {
         res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
@@ -700,7 +714,7 @@ describe("registry sync", () => {
                 kind: "skill",
                 id: "web-design",
                 name: "Web Design Guidelines",
-                source: `inline:${encodeURIComponent("# Web Design Skill\n")}`,
+                source: webDesignSkillSource,
                 targets: ["codex"],
                 provenance: {
                   source: "registry:official",
@@ -755,6 +769,7 @@ describe("registry sync", () => {
 
   test("rejects profile bundles from registries because pack is the only bundle model", async () => {
     const root = await mkdtemp(join(tmpdir(), "use0-kit-registry-profile-"));
+    const webDesignSkillSource = await createRegistrySkill(root, "web-design", "# Web Design Skill\n");
     const server = createServer((req, res) => {
       if (req.url === "/registry.json") {
         res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
@@ -765,7 +780,7 @@ describe("registry sync", () => {
                 kind: "skill",
                 id: "web-design",
                 name: "Web Design Guidelines",
-                source: `inline:${encodeURIComponent("# Web Design Skill\n")}`,
+                source: webDesignSkillSource,
                 targets: ["codex"],
                 provenance: {
                   source: "registry:official",

@@ -113,7 +113,7 @@ describe("lock and update lifecycle", () => {
       await runCli(["scope", "init", "--scope", "global"], { cwd: root });
       const globalRoot = join(xdgData, "use0-kit", "global");
       const skillDir = join(globalRoot, "skills", "global-skill");
-      const commandDir = join(globalRoot, ".use0-kit", "resources", "commands");
+      const commandDir = join(globalRoot, ".use0-kit", "sources", "commands");
       await mkdir(skillDir, { recursive: true });
       await mkdir(commandDir, { recursive: true });
       await writeFile(join(skillDir, "SKILL.md"), "# Global Skill\n", "utf8");

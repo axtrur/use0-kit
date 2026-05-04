@@ -120,11 +120,6 @@ describe("source resolver schemes", () => {
         res.end("echo namespaced hook\n");
         return;
       }
-      if (req.url === "/.well-known/agent-skills") {
-        res.writeHead(200, { "content-type": "text/markdown; charset=utf-8" });
-        res.end("# Namespaced Skill\n");
-        return;
-      }
       res.writeHead(404);
       res.end("missing");
     });
@@ -137,9 +132,6 @@ describe("source resolver schemes", () => {
 
     try {
       await runCli(["scope", "init", "--scope", "project"], { cwd: root });
-      await runCli(["skill", "add", `well-known:${base}`, "--id", "namespaced-skill", "--targets", "codex"], {
-        cwd: root
-      });
       await runCli(["command", "add", "namespaced-command", `url:${base}/command.md`, "--targets", "codex"], {
         cwd: root
       });
@@ -159,9 +151,6 @@ describe("source resolver schemes", () => {
       });
 
       await runCli(["apply"], { cwd: root });
-      expect(await readFile(join(root, ".codex", "skills", "namespaced-skill", "SKILL.md"), "utf8")).toContain(
-        "Namespaced Skill"
-      );
       expect(await readFile(join(root, ".codex", "commands", "namespaced-command.md"), "utf8")).toContain(
         "Run namespaced command."
       );
@@ -176,7 +165,7 @@ describe("source resolver schemes", () => {
     }
   });
 
-  test("supports well-known sources for skills", async () => {
+  test("rejects single-file well-known sources for skills", async () => {
     const root = await mkdtemp(join(tmpdir(), "use0-kit-well-known-"));
     const server = createServer((req, res) => {
       if (req.url === "/.well-known/agent-skills") {
@@ -196,14 +185,11 @@ describe("source resolver schemes", () => {
 
     try {
       await runCli(["scope", "init", "--scope", "project"], { cwd: root });
-      await runCli(
-        ["skill", "add", "--id", "well-known-skill", "--source", `well-known:${base}`, "--targets", "codex"],
-        { cwd: root }
-      );
-      await runCli(["apply"], { cwd: root });
-      expect(await readFile(join(root, ".codex", "skills", "well-known-skill", "SKILL.md"), "utf8")).toContain(
-        "Well Known Skill"
-      );
+      await expect(
+        runCli(["skill", "add", "--id", "well-known-skill", "--source", `well-known:${base}`, "--targets", "codex"], {
+          cwd: root
+        })
+      ).rejects.toThrow(/Skill source must be a directory/);
     } finally {
       server.close();
     }

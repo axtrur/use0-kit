@@ -82,13 +82,13 @@ describe("scope exclude and graph views", () => {
     );
     const merged = await readFile(join(projectRoot, "use0-kit.toml"), "utf8");
     expect(merged).toContain(
-      `source = "path:${join(projectRoot, ".use0-kit", "resources", "instructions", "testing.md")}"`
+      `source = "path:${join(projectRoot, ".use0-kit", "sources", "instructions", "testing.md")}"`
     );
     expect(
-      await readFile(join(projectRoot, ".use0-kit", "resources", "instructions", "testing.md"), "utf8")
+      await readFile(join(projectRoot, ".use0-kit", "sources", "instructions", "testing.md"), "utf8")
     ).toContain("project body");
     expect(
-      await readFile(join(projectRoot, ".use0-kit", "resources", "instructions", "testing.md"), "utf8")
+      await readFile(join(projectRoot, ".use0-kit", "sources", "instructions", "testing.md"), "utf8")
     ).toContain("global body");
 
     expect(await runCli(["diff", "--effective"], { cwd: projectRoot })).toContain("effective");

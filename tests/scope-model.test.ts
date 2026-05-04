@@ -175,10 +175,12 @@ describe("scope model", () => {
       ["command", "add", "--id", "cursor-only", "--content", "echo cursor", "--targets", "cursor"],
       { cwd: root }
     );
-    await runCli(
-      ["skill", "add", "--id", "repo-skill", "--source", "inline:repo", "--targets", "codex"],
-      { cwd: root }
-    );
+    const skillDir = join(root, ".use0-kit", "sources", "skills", "repo-skill");
+    await mkdir(skillDir, { recursive: true });
+    await writeFile(join(skillDir, "SKILL.md"), "# Repo Skill\n", "utf8");
+    await runCli(["skill", "add", "--id", "repo-skill", "--source", `path:${skillDir}`, "--targets", "codex"], {
+      cwd: root
+    });
     await runCli(["apply", "--agent", "codex"], { cwd: root });
 
     const commandsOnly = await runCli(["scope", "inspect", "--scope", "project", "--kind", "command"], { cwd: root });

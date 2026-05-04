@@ -898,7 +898,7 @@ describe("CLI completeness helpers", () => {
 
   test("rollback restores managed instruction source resources", async () => {
     const root = await mkdtemp(join(tmpdir(), "use0-kit-rollback-instructions-"));
-    const instructionPath = join(root, ".use0-kit", "resources", "instructions", "testing.md");
+    const instructionPath = join(root, ".use0-kit", "sources", "instructions", "testing.md");
 
     await runCli(["scope", "init", "--scope", "project", "--agents", "codex"], { cwd: root });
     await runCli(

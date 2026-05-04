@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 import { loadManifest, saveManifest } from "./manifest.js";
 import { expandSelectors, findBySelector, listSelectors } from "./resource-graph.js";
-import { loadResourceContent } from "./resources.js";
+import { loadResourceContent, managedSourceDir } from "./resources.js";
 import type {
   CommandResource,
   HookResource,
@@ -297,14 +297,15 @@ export async function syncScopesDetailed(input: {
       next.source = `path:${forkPath}`;
     }
     if (hasConflict && resolvedConflict === "merge" && existing) {
-      const mergedPath = join(input.toRoot, ".use0-kit", "resources", "instructions", `${instruction.id}.md`);
+      const instructionDir = managedSourceDir(input.toRoot, "instructions");
+      const mergedPath = join(instructionDir, `${instruction.id}.md`);
       const mergedContent = [
         (await loadResourceContent(input.toRoot, existing.source)).trimEnd(),
         (await loadResourceContent(input.fromRoot, instruction.source)).trim()
       ]
         .filter(Boolean)
         .join("\n");
-      await mkdir(join(input.toRoot, ".use0-kit", "resources", "instructions"), { recursive: true });
+      await mkdir(instructionDir, { recursive: true });
       await writeFile(mergedPath, `${mergedContent}\n`, "utf8");
       next.source = `path:${mergedPath}`;
     }

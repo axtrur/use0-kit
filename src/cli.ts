@@ -85,6 +85,7 @@ import {
   initPack,
   loadResourceContent,
   listPacks,
+  managedSkillSourceDir,
   removeCommand,
   removeHook,
   removeInstruction,
@@ -1409,7 +1410,7 @@ export async function runCli(args: string[], context: CliContext): Promise<strin
       if (!skill) {
         throw new Error(`Unknown ${selector}`);
       }
-      return await resolveSkillSourcePath(root, skill.source, skill.id);
+      return await resolveSkillSourcePath(root, skill.source);
     }
     if (kind === "command") {
       const resource = await getCommand(root, id);
@@ -1477,7 +1478,7 @@ export async function runCli(args: string[], context: CliContext): Promise<strin
   if (command === "skill" && subcommand === "init") {
     const root = await resolveCommandRoot(context, flags.scope as string | undefined);
     const id = positionals[0] ?? flags.id;
-    const skillDir = join(root, "skills", id);
+    const skillDir = managedSkillSourceDir(root, id);
     await mkdir(skillDir, { recursive: true });
     await writeFile(
       join(skillDir, "SKILL.md"),

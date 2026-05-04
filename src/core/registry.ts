@@ -7,6 +7,7 @@ import { promisify } from "node:util";
 import { collectEffectiveGraph } from "./graph-state.js";
 import { loadManifest, saveManifest } from "./manifest.js";
 import { describeSelectorResource, findBySelector, type SelectorResource } from "./resource-graph.js";
+import { assertValidSkillSource, managedSourceDir } from "./resources.js";
 import { parseSourceReference } from "./source-resolver.js";
 import type { PackSignature } from "./types.js";
 
@@ -674,13 +675,15 @@ export async function installFromRegistry(
 
   const manifest = await loadManifest(root);
   if (item.kind === "skill") {
-    manifest.skills = manifest.skills.filter((entry) => entry.id !== item.id);
-    manifest.skills.push({
+    const skill = {
       id: item.id,
       source: item.source ?? "",
       targets: (item.targets ?? []) as typeof manifest.skills[number]["targets"],
       provenance: item.provenance
-    });
+    };
+    await assertValidSkillSource(root, skill);
+    manifest.skills = manifest.skills.filter((entry) => entry.id !== item.id);
+    manifest.skills.push(skill);
   } else if (item.kind === "mcp") {
     manifest.mcps = manifest.mcps.filter((entry) => entry.id !== item.id);
     manifest.mcps.push({
@@ -695,7 +698,7 @@ export async function installFromRegistry(
   } else if (item.kind === "instruction") {
     let source = item.source ?? "";
     if (!source && item.body !== undefined) {
-      const instructionPath = join(root, ".use0-kit", "resources", "instructions", `${item.id}.md`);
+      const instructionPath = join(managedSourceDir(root, "instructions"), `${item.id}.md`);
       await mkdir(dirname(instructionPath), { recursive: true });
       await writeFile(instructionPath, item.body, "utf8");
       source = `path:${instructionPath}`;

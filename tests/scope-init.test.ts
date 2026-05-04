@@ -23,6 +23,11 @@ describe("initScope", () => {
     await expect(access(join(root, ".agents", "hooks"))).resolves.toBeUndefined();
     await expect(access(join(root, ".agents", "plugins"))).resolves.toBeUndefined();
     await expect(access(join(root, ".use0-kit", "store", "skills"))).resolves.toBeUndefined();
+    await expect(access(join(root, ".use0-kit", "sources", "skills"))).resolves.toBeUndefined();
+    await expect(access(join(root, ".use0-kit", "sources", "instructions"))).resolves.toBeUndefined();
+    await expect(access(join(root, ".use0-kit", "sources", "commands"))).resolves.toBeUndefined();
+    await expect(access(join(root, ".use0-kit", "sources", "subagents"))).resolves.toBeUndefined();
+    await expect(access(join(root, ".use0-kit", "sources", "hooks"))).resolves.toBeUndefined();
 
     expect(manifest).toContain('version = 1');
     expect(manifest).toContain('default_scope = "project"');

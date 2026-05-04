@@ -188,8 +188,11 @@ describe("additional CLI surfaces", () => {
 
       const globalRoot = join(xdgData, "use0-kit", "global");
       const userRoot = join(xdgConfig, "use0-kit");
+      const globalSkill = join(globalRoot, ".use0-kit", "sources", "skills", "global-skill");
 
-      await runCli(["add", "skill", "inline:Global%20skill", "--id", "global-skill", "--targets", "codex"], {
+      await mkdir(globalSkill, { recursive: true });
+      await writeFile(join(globalSkill, "SKILL.md"), "# Global Skill\n", "utf8");
+      await runCli(["add", "skill", `path:${globalSkill}`, "--id", "global-skill", "--targets", "codex"], {
         cwd: globalRoot
       });
       await runCli(

@@ -226,19 +226,22 @@ describe("policy and trust enforcement", () => {
   test("allow_remote_http_skills blocks url and well-known skill sources", async () => {
     const root = await mkdtemp(join(tmpdir(), "use0-kit-policy-http-skills-"));
     await runCli(["scope", "init", "--scope", "project"], { cwd: root });
-    await runCli(
-      ["skill", "add", "--id", "remote-skill", "--source", "url:https://example.com/SKILL.md", "--targets", "codex"],
-      { cwd: root }
-    );
-    await runCli(
-      ["skill", "add", "--id", "catalog-skill", "--source", "well-known:https://example.com", "--targets", "codex"],
-      { cwd: root }
-    );
+    const manifest = await readFile(join(root, "use0-kit.toml"), "utf8");
 
     await writeFile(
       join(root, "use0-kit.toml"),
       [
-        (await readFile(join(root, "use0-kit.toml"), "utf8")).trimEnd(),
+        manifest.trimEnd(),
+        "",
+        "[[skills]]",
+        'id = "remote-skill"',
+        'source = "url:https://example.com/SKILL.md"',
+        'targets = ["codex"]',
+        "",
+        "[[skills]]",
+        'id = "catalog-skill"',
+        'source = "well-known:https://example.com"',
+        'targets = ["codex"]',
         "",
         "[policy]",
         "allow_remote_http_skills = false",

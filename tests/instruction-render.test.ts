@@ -8,7 +8,7 @@ import { instructionMarkerEnd, instructionMarkerStart, renderInstructions } from
 describe("renderInstructions", () => {
   test("renders codex instructions into AGENTS.md-compatible markdown", async () => {
     const root = await mkdtemp(join(tmpdir(), "use0-kit-instructions-"));
-    const instructionDir = join(root, ".use0-kit", "resources", "instructions");
+    const instructionDir = join(root, ".use0-kit", "sources", "instructions");
     const instructionPath = join(instructionDir, "testing.md");
 
     await mkdir(instructionDir, { recursive: true });

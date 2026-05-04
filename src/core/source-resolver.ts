@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { access, mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { basename, extname, isAbsolute, join, resolve } from "node:path";
+import { extname, isAbsolute, join, resolve } from "node:path";
 
 const execFileAsync = promisify(execFile);
 let offlineMode = false;
@@ -200,20 +200,21 @@ export async function resolveSourcePath(root: string, source: string): Promise<s
   return (await resolveSource(root, source)).path;
 }
 
-export async function resolveSkillSourcePath(root: string, source: string, skillId: string): Promise<string> {
+export async function resolveSkillSourcePath(root: string, source: string): Promise<string> {
   const resolved = await resolveSource(root, source);
   const sourcePath = resolved.path;
   const sourceStat = await stat(sourcePath);
-  if (sourceStat.isDirectory()) {
-    return sourcePath;
+  if (!sourceStat.isDirectory()) {
+    throw new Error(`Skill source must resolve to a directory with SKILL.md: ${source}`);
   }
 
-  const normalizedRoot = join(root, ".use0-kit", "cache", "normalized-skills");
-  const normalizedDir = join(normalizedRoot, `${skillId}-${cacheKey(source)}`);
-  const skillFileName = basename(sourcePath) === "SKILL.md" ? "SKILL.md" : "SKILL.md";
-  await mkdir(normalizedDir, { recursive: true });
-  await writeFile(join(normalizedDir, skillFileName), await readFile(sourcePath, "utf8"), "utf8");
-  return normalizedDir;
+  try {
+    await access(join(sourcePath, "SKILL.md"));
+  } catch {
+    throw new Error(`Skill source directory is missing SKILL.md: ${source}`);
+  }
+
+  return sourcePath;
 }
 
 async function readDigestibleSourceContent(sourcePath: string): Promise<string> {

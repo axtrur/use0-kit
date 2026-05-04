@@ -9,10 +9,10 @@ describe("state lock and graph", () => {
   test("writes materialized graph after apply and exposes materialized diff view", async () => {
     const root = await mkdtemp(join(tmpdir(), "use0-kit-materialized-"));
     const skillDir = join(root, "skills", "repo-conventions");
-    const hookPath = join(root, ".use0-kit", "resources", "hooks", "pre-apply.sh");
+    const hookPath = join(root, ".use0-kit", "sources", "hooks", "pre-apply.sh");
 
     await mkdir(skillDir, { recursive: true });
-    await mkdir(join(root, ".use0-kit", "resources", "hooks"), { recursive: true });
+    await mkdir(join(root, ".use0-kit", "sources", "hooks"), { recursive: true });
     await writeFile(join(skillDir, "SKILL.md"), "# Repo Conventions\n", "utf8");
     await writeFile(hookPath, "echo before\n", "utf8");
 

@@ -61,15 +61,15 @@ describe("use0-kit CLI", () => {
       { cwd: globalRoot }
     );
     expect(await readFile(join(globalRoot, "use0-kit.toml"), "utf8")).toContain(
-      `source = "path:${join(globalRoot, ".use0-kit", "resources", "instructions", "testing.md")}"`
+      `source = "path:${join(globalRoot, ".use0-kit", "sources", "instructions", "testing.md")}"`
     );
     expect(await readFile(join(globalRoot, "use0-kit.toml"), "utf8")).not.toContain("placement =");
     expect(await readFile(join(globalRoot, "use0-kit.toml"), "utf8")).not.toContain("heading =");
     expect(
-      await readFile(join(globalRoot, ".use0-kit", "resources", "instructions", "testing.md"), "utf8")
+      await readFile(join(globalRoot, ".use0-kit", "sources", "instructions", "testing.md"), "utf8")
     ).toContain("## Testing");
     expect(
-      await readFile(join(globalRoot, ".use0-kit", "resources", "instructions", "testing.md"), "utf8")
+      await readFile(join(globalRoot, ".use0-kit", "sources", "instructions", "testing.md"), "utf8")
     ).toContain("Run npm test before opening a PR.");
 
     const syncOutput = await runCli(

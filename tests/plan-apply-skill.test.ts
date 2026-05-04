@@ -91,24 +91,24 @@ describe("plan/apply", () => {
         "",
         "[[commands]]",
         'id = "security-scan"',
-        `source = "path:${join(root, ".use0-kit", "resources", "commands", "security-scan.md")}"`,
+        `source = "path:${join(root, ".use0-kit", "sources", "commands", "security-scan.md")}"`,
         'targets = ["codex"]',
         "",
         "[[subagents]]",
         'id = "backend"',
-        `source = "path:${join(root, ".use0-kit", "resources", "subagents", "backend.md")}"`,
+        `source = "path:${join(root, ".use0-kit", "sources", "subagents", "backend.md")}"`,
         'targets = ["codex"]',
         ""
       ].join("\n")
     );
-    await mkdir(join(root, ".use0-kit", "resources", "commands"), { recursive: true });
-    await mkdir(join(root, ".use0-kit", "resources", "subagents"), { recursive: true });
+    await mkdir(join(root, ".use0-kit", "sources", "commands"), { recursive: true });
+    await mkdir(join(root, ".use0-kit", "sources", "subagents"), { recursive: true });
     await writeFile(
-      join(root, ".use0-kit", "resources", "commands", "security-scan.md"),
+      join(root, ".use0-kit", "sources", "commands", "security-scan.md"),
       ["---", "agentkit/codex/effort: high", "---", "", "Run checks."].join("\n")
     );
     await writeFile(
-      join(root, ".use0-kit", "resources", "subagents", "backend.md"),
+      join(root, ".use0-kit", "sources", "subagents", "backend.md"),
       ["---", "agentkit/codex/model: fast", "---", "", "Own backend."].join("\n")
     );
 
@@ -144,9 +144,9 @@ describe("plan/apply", () => {
     const root = await mkdtemp(join(tmpdir(), "use0-kit-apply-hook-secret-"));
 
     await initScope({ cwd: root, scope: "project" });
-    await mkdir(join(root, ".use0-kit", "resources", "hooks"), { recursive: true });
+    await mkdir(join(root, ".use0-kit", "sources", "hooks"), { recursive: true });
     await writeFile(
-      join(root, ".use0-kit", "resources", "hooks", "pre-apply.sh"),
+      join(root, ".use0-kit", "sources", "hooks", "pre-apply.sh"),
       "echo before\n"
     );
     await writeFile(
@@ -159,7 +159,7 @@ describe("plan/apply", () => {
         "",
         "[[hooks]]",
         'id = "pre-apply"',
-        `source = "path:${join(root, ".use0-kit", "resources", "hooks", "pre-apply.sh")}"`,
+        `source = "path:${join(root, ".use0-kit", "sources", "hooks", "pre-apply.sh")}"`,
         'targets = ["codex"]',
         "",
         "[[secrets]]",
@@ -287,6 +287,9 @@ describe("plan/apply", () => {
 
   test("keeps parsing legacy sync_mode fields while serializing scope_mode", async () => {
     const root = await mkdtemp(join(tmpdir(), "use0-kit-legacy-sync-mode-"));
+    const skillDir = join(root, "skills", "repo-conventions");
+    await mkdir(skillDir, { recursive: true });
+    await writeFile(join(skillDir, "SKILL.md"), "# Repo Conventions\n", "utf8");
     await initScope({ cwd: root, scope: "project" });
     await writeFile(
       join(root, "use0-kit.toml"),
@@ -306,7 +309,7 @@ describe("plan/apply", () => {
         "",
         "[[skills]]",
         'id = "repo-conventions"',
-        'source = "inline:repo"',
+        `source = "path:${skillDir}"`,
         'targets = ["codex"]',
         'sync_mode = "pin"',
         ""
